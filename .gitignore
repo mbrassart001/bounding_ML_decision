@@ -1,0 +1,8 @@
+compiling_nn/odd
+datasets/spect/DonorNote.txt
+*.zip
+*.pyc
+*.pth
+*.csv
+SPECT*
+msnbc*
