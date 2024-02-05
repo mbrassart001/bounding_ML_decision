@@ -1,5 +1,6 @@
 compiling_nn/odd
 datasets/spect/DonorNote.txt
+tmp*
 *.zip
 *.pyc
 *.pth
