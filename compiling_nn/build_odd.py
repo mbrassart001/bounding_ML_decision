@@ -3,7 +3,7 @@ import pyeda.inter as inter
 import pyeda.boolalg as boolalg
 from graphviz import Digraph, Source
 from IPython.display import SVG, display
-from utils_odd import timelimit, timecounter
+from .utils_odd import timelimit, timecounter
 
 infty = float('inf')
 

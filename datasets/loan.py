@@ -3,7 +3,7 @@ import random
 import pandas as pd
 
 def get_df_data():
-    df = pd.read_csv(os.path.join(os.path.dirname(__file__), "loan_data_set.csv"), sep=",")
+    df = pd.read_csv(os.path.join(os.path.dirname(__file__), "loan", "loan_data_set.csv"), sep=",")
     df = df.drop(columns=["Loan_ID"])
 
     return df
