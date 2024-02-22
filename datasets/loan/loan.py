@@ -8,6 +8,29 @@ def get_df_data():
 
     return df
 
+def remove_na(df, method):      
+    if method == 'fill':
+        val_default = {
+            'Gender': 'Male',
+            'Married': 'No',
+            'Dependents': None,
+            'Education': 'Not Graduate',
+            'Self_Employed': None,
+            # 'ApplicantIncome': 0,
+            # 'CoapplicantIncome': 0,
+            'LoanAmount': 0,
+            'Loan_Amount_Term': df['LoanAmount'],
+            'Credit_History': 0,
+            'Property_Area': None,
+        }
+    
+        for k, v in val_default.items():
+            if v is not None:
+                df[k] = df[k].fillna(v)
+
+    df = df.dropna().reset_index(drop=True)
+    return df
+
 def remove_percentile(df, pct):
     df_rank = df[["ApplicantIncome", "CoapplicantIncome"]]
     df_rank["rankA"] = df_rank[["ApplicantIncome"]].rank(pct=True)
@@ -34,6 +57,14 @@ def discretize_numeric(df_x):
     
     return df_x
 
+def normalize_numeric(df_x):
+    df_x_mean = df_x.mean(axis=0, numeric_only=True)
+    df_x_std = df_x.std(axis=0, numeric_only=True)
+
+    df_x[df_x_mean.index] = (df_x[df_x_mean.index] - df_x_mean) / df_x_std
+
+    return df_x
+
 def hot_encode(df_x, columns):
     df_x = pd.get_dummies(df_x, columns=columns, drop_first=True)
     return df_x
@@ -42,22 +73,19 @@ def balance_dataset(df_x, df_y):
     itrue = df_y.index[df_y["Loan_Status_Y"]==1].tolist()
     ifalse = df_y.index[df_y["Loan_Status_Y"]==0].tolist()
 
-    swap = len(itrue) > len(ifalse)
-    if swap:
-        itrue,ifalse=ifalse,itrue
-
-    ifalse = random.choices(ifalse, k=len(itrue))
-
-    if swap:
-        itrue,ifalse=ifalse,itrue
+    if len(itrue) > len(ifalse):
+        itrue = random.choices(itrue, k=len(ifalse))
+    else:
+        ifalse = random.choices(ifalse, k=len(itrue))
 
     df_x = df_x.iloc[itrue+ifalse]
     df_y = df_y.iloc[itrue+ifalse]
 
     return df_x, df_y
 
-def get_loan_dataset(balancing=True, discretizing=True, hot_encoding=True, rmv_pct=False):
+def get_loan_dataset(balancing=True, discretizing=True, hot_encoding=True, na_handling='drop', rmv_pct=False):
     df = get_df_data()
+    df = remove_na(df, na_handling)
     if rmv_pct:
         df = remove_percentile(df, rmv_pct)
     df_x, df_y = data_label_separation(df)
@@ -65,7 +93,8 @@ def get_loan_dataset(balancing=True, discretizing=True, hot_encoding=True, rmv_p
         df_x = discretize_numeric(df_x)
         hot_encode_columns = df_x.columns
     else:
-        hot_encode_columns = [col for col, n in df_x.nunique(axis=0).items() if n < 5]
+        df_x = normalize_numeric(df_x)
+        hot_encode_columns = df_x.select_dtypes(exclude='number').columns
     if hot_encoding:
         df_x = hot_encode(df_x, hot_encode_columns)
     if balancing:
