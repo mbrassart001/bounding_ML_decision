@@ -69,12 +69,12 @@ class MaxHierarchicalFunction(torch.autograd.Function):
     def backward(ctx, grad_output):
         input, output, true = ctx.saved_tensors
 
-        cond = (true.to(bool)).repeat((input.size(0),1,1))
-        cond[0] = True
+        cond = true.repeat((input.size(0),1,1))
+        cond[0] = 1
         for i,t in enumerate(input[1:-1]):
-            cond[i+2] = cond[i+1] & (t<=.5)
+            cond[i+2] = cond[i+1] * torch.where(t<.5, 1, i+2)
 
-        grad = torch.where(cond, grad_output, 0)
+        grad = cond * grad_output
         
         return grad, None
 
