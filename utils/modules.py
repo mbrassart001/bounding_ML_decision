@@ -18,9 +18,6 @@ class Parallel(torch.nn.ModuleDict):
 
         return d
 
-    # def backward(self):
-    #     pass
-
 class MaxFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):
