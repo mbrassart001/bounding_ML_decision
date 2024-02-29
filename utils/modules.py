@@ -54,7 +54,44 @@ class MaxLayer(torch.nn.Module):
         input = torch.stack(list(inputs.values()))
 
         return MaxFunction.apply(input)
+
+class MaxHierarchicalFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, true):
+        inputs = input.unbind()
+
+        output = mtf.maximum(inputs)
+
+        ctx.save_for_backward(input, output, true)
+        return output
     
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, output, true = ctx.saved_tensors
+
+        cond = (true.to(bool)).repeat((input.size(0),1,1))
+        cond[0] = True
+        for i,t in enumerate(input[1:-1]):
+            cond[i+2] = cond[i+1] & (t<=.5)
+
+        grad = torch.where(cond, grad_output, 0)
+        
+        return grad, None
+
+
+class MaxHierarchicalLayer(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.true_labels = None
+
+    def forward(self, inputs):
+        if not isinstance(inputs, OrderedDict):
+            raise ValueError("Use OrderedDict")
+        
+        input = torch.stack(list(inputs.values()))
+
+        return MaxHierarchicalFunction.apply(input, self.true_labels)
+
 class DisplayLayer(torch.nn.Module):
     def __init__(self):
         super().__init__()
