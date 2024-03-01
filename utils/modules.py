@@ -77,7 +77,7 @@ class MaxHierarchicalFunction(torch.autograd.Function):
         cond = torch.full(grad_output.size(), False)
         for i, _ in enumerate(input[2:]):
             cond|=(input[i+1]<.5)
-            mult[i+2] *= torch.where(cond&(true>.5), i+2, 1)
+            mult[i+2] *= torch.where(cond&(true>.5), 2, 1)
 
         grad = mult * grad_output
         
