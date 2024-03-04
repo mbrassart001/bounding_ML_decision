@@ -1,25 +1,28 @@
 import random
 import pandas as pd
 
+from numpy import ndarray
+from typing import List, Tuple, Union, Dict, Any
+
 class Dataset:
     @staticmethod
-    def get_df_data():
+    def get_df_data() -> pd.DataFrame:
         return NotImplemented
 
     @staticmethod
-    def get_label_column():
+    def get_label_column() -> str:
         return NotImplemented
 
     @staticmethod
-    def remove_percentile(df, pct):
+    def remove_percentile(df: pd.DataFrame, pct: float) -> pd.DataFrame:
         return NotImplemented
 
     @staticmethod
-    def na_fill_values(df):
+    def na_fill_values(df: pd.DataFrame) -> Dict[str: Any]:
         return NotImplemented
 
     @staticmethod
-    def remove_na(cls, df, na_handling="drop"):
+    def remove_na(cls, df: pd.DataFrame, na_handling: str="drop") -> pd.DataFrame:
         if na_handling == "fill":
             val_default = cls.na_fill_values(df)
 
@@ -31,14 +34,14 @@ class Dataset:
         return df
 
     @staticmethod
-    def data_label_separation(df, label_column):
+    def data_label_separation(df: pd.DataFrame, label_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         df_y = df[[label_column]]
         df_x = df.drop(columns=[label_column])
 
         return df_x, df_y
 
     @staticmethod
-    def discretize_numeric(df_x):
+    def discretize_numeric(df_x: pd.DataFrame) -> pd.DataFrame:
         nunique = df_x.nunique(axis=0)
         df_x_mean = df_x.mean(axis=0, numeric_only=True)
 
@@ -49,7 +52,7 @@ class Dataset:
         return df_x
 
     @staticmethod
-    def normalize_numeric(df_x):
+    def normalize_numeric(df_x: pd.DataFrame) -> pd.DataFrame:
         df_x_mean = df_x.mean(axis=0, numeric_only=True)
         df_x_std = df_x.std(axis=0, numeric_only=True)
 
@@ -58,13 +61,13 @@ class Dataset:
         return df_x
 
     @staticmethod
-    def hot_encode(df_x, columns):
+    def hot_encode(df_x: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
         df_x = pd.get_dummies(df_x, columns=columns, drop_first=True)
         return df_x
 
     # TODO multi-class
     @staticmethod
-    def balance_dataset(df_x, df_y, label_column):
+    def balance_dataset(df_x: pd.DataFrame, df_y: pd.DataFrame, label_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         itrue = df_y.index[df_y[label_column]==1].tolist()
         ifalse = df_y.index[df_y[label_column]==0].tolist()
 
@@ -79,7 +82,7 @@ class Dataset:
         return df_x, df_y
 
     @staticmethod
-    def label_to_numeric(df_y, label_column):
+    def label_to_numeric(df_y: pd.DataFrame, label_column: str) -> pd.DataFrame:
         numeric_df_y = df_y.apply(pd.to_numeric, errors="coerce")
 
         if numeric_df_y.isnull().values.any():
@@ -90,7 +93,7 @@ class Dataset:
         return df_y
 
     @classmethod
-    def get_dataset(cls, balancing=True, discretizing=True, hot_encoding=True, na_handling="drop", rmv_pct=False):
+    def get_dataset(cls, balancing: bool=True, discretizing: bool=True, hot_encoding: bool=True, na_handling: str="drop", rmv_pct: Union[bool|str]=False) -> Tuple[ndarray, ndarray]:
         label_column = cls.get_label_column()
         df = cls.get_df_data()
         df = cls.remove_na(cls, df, na_handling)
