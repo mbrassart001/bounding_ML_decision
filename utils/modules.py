@@ -20,19 +20,20 @@ class Parallel(torch.nn.ModuleDict):
 
 class MaxFunction(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input):
+    def forward(ctx, input, backward_method):
         inputs = input.unbind()
 
         # maximum ? addition ? some sort of mean ? mix of the methods ?
         output = mtf.maximum(inputs)
 
         ctx.save_for_backward(input, output)
+        ctx.backward_method = backward_method
         return output
     
     @staticmethod
     def backward(ctx, grad_output):
         input, output = ctx.saved_tensors
-        return MaxFunction.backward_blame_all(input, output, grad_output)
+        return ctx.backward_method(input, output, grad_output), None
     
     # /!\ improve needed /!\
     @staticmethod
@@ -44,8 +45,12 @@ class MaxFunction(torch.autograd.Function):
         return grad_output.repeat((input.size(0),1,1))
 
 class MaxLayer(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, backward_method="all"):
         super().__init__()
+        methods = ("all", "max")
+        if backward_method not in methods:
+            raise ValueError(f"Supported methods are {', '.join(methods)}")
+        self.backward_func = getattr(MaxFunction, "backward_blame_" + backward_method)
 
     def forward(self, inputs):
         if not isinstance(inputs, OrderedDict):
@@ -53,7 +58,7 @@ class MaxLayer(torch.nn.Module):
         
         input = torch.stack(list(inputs.values()))
 
-        return MaxFunction.apply(input)
+        return MaxFunction.apply(input, self.backward_func)
 
 class MaxHierarchicalFunction(torch.autograd.Function):
     @staticmethod
@@ -62,12 +67,14 @@ class MaxHierarchicalFunction(torch.autograd.Function):
 
         output = mtf.maximum(inputs)
 
-        ctx.save_for_backward(input, output, true)
+        ctx.save_for_backward(input, output)
+        ctx.true_labels = true
         return output
     
     @staticmethod
     def backward(ctx, grad_output):
-        input, output, true = ctx.saved_tensors
+        input, output = ctx.saved_tensors
+        true = ctx.true_labels
 
         # false positive multiplier
         mult = torch.where((input>=.5)&(true<.5), 10, 1)
