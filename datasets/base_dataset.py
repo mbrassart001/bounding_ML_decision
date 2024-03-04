@@ -2,7 +2,7 @@ import random
 import pandas as pd
 
 from numpy import ndarray
-from typing import List, Tuple, Union, Dict, Any
+from typing import List, Tuple, Union, Hashable, Mapping
 
 class Dataset:
     @staticmethod
@@ -18,7 +18,7 @@ class Dataset:
         return NotImplemented
 
     @staticmethod
-    def na_fill_values(df: pd.DataFrame) -> Dict[str: Any]:
+    def na_fill_values(df: pd.DataFrame) -> Hashable | Mapping | pd.Series | pd.DataFrame:
         return NotImplemented
 
     @staticmethod
