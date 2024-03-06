@@ -93,7 +93,7 @@ class Dataset:
         return df_y
 
     @classmethod
-    def get_dataset(cls, balancing: bool=True, discretizing: bool=True, hot_encoding: bool=True, na_handling: str="drop", rmv_pct: Union[bool|str]=False) -> Tuple[ndarray, ndarray]:
+    def get_dataset(cls, balancing: bool=True, discretizing: bool=True, hot_encoding: bool=True, na_handling: str="drop", rmv_pct: Union[float|bool]=False) -> Tuple[ndarray, ndarray]:
         label_column = cls.get_label_column()
         df = cls.get_df_data()
         df = cls.remove_na(cls, df, na_handling)

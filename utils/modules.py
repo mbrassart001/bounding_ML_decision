@@ -111,3 +111,44 @@ class DisplayLayer(torch.nn.Module):
     def forward(self, input):
         print("display", type(input), input)
         return input
+    
+class MinFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, backward_method):
+        inputs = input.unbind()
+
+        output = mtf.minimum(inputs)
+
+        ctx.save_for_backward(input, output)
+        ctx.backward_method = backward_method
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, output = ctx.saved_tensors
+        return ctx.backward_method(input, output, grad_output), None
+
+    # /!\ improve needed /!\
+    @staticmethod
+    def backward_blame_min(input, output, grad_output):
+        return torch.where(input <= output, grad_output, 0)
+
+    @staticmethod
+    def backward_blame_all(input, output, grad_output):
+        return grad_output.repeat((input.size(0),1,1))
+
+class MinLayer(torch.nn.Module):
+    def __init__(self, backward_method="all"):
+        super().__init__()
+        methods = ("all", "max")
+        if backward_method not in methods:
+            raise ValueError(f"Supported methods are {', '.join(methods)}")
+        self.backward_func = getattr(MinFunction, "backward_blame_" + backward_method)
+
+    def forward(self, inputs):
+        if not isinstance(inputs, OrderedDict):
+            raise ValueError("Use OrderedDict")
+
+        input = torch.stack(list(inputs.values()))
+
+        return MinFunction.apply(input, self.backward_func)
