@@ -103,14 +103,6 @@ class MaxHierarchicalLayer(torch.nn.Module):
         input = torch.stack(list(inputs.values()))
 
         return MaxHierarchicalFunction.apply(input, self.true_labels)
-
-class DisplayLayer(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, input):
-        print("display", type(input), input)
-        return input
     
 class MinFunction(torch.autograd.Function):
     @staticmethod
