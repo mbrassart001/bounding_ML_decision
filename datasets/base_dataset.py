@@ -2,7 +2,7 @@ import random
 import pandas as pd
 
 from numpy import ndarray
-from typing import List, Tuple, Union, Hashable, Mapping
+from typing import Tuple, Union, Hashable, Mapping, Sequence
 
 class Dataset:
     @staticmethod
@@ -20,6 +20,25 @@ class Dataset:
     @staticmethod
     def na_fill_values(df: pd.DataFrame) -> Hashable | Mapping | pd.Series | pd.DataFrame:
         return NotImplemented
+
+    @staticmethod
+    def multiclass_handling(df: pd.DataFrame, label_column: str, keep_label: Union[int, Sequence[str]]=2) -> pd.DataFrame:
+        existing_label = df[label_column].value_counts()
+
+        if isinstance(keep_label, int):
+            keep_label = existing_label.head(keep_label).index.to_list()
+        elif isinstance(keep_label, list|tuple|set):
+            if not set(keep_label) <= set(existing_label.index):
+                raise ValueError(f"{keep_label} is not a subset of existing labels ({set(existing_label.index)})")
+        else:
+            raise TypeError("keep_label should be an integer or a sequence of label")
+        
+        if len(keep_label) < 2:
+            raise ValueError("Need at least two labels")
+
+        df = df[df["Class"].str.contains("|".join(keep_label))].reset_index()
+
+        return df
 
     @staticmethod
     def remove_na(cls, df: pd.DataFrame, na_handling: str="drop") -> pd.DataFrame:
@@ -61,16 +80,18 @@ class Dataset:
         return df_x
 
     @staticmethod
-    def hot_encode(df_x: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+    def hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
         df_x = pd.get_dummies(df_x, columns=columns, drop_first=True)
         return df_x
 
     # TODO multi-class
     @staticmethod
     def balance_dataset(df_x: pd.DataFrame, df_y: pd.DataFrame, label_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        # nunique ?
         itrue = df_y.index[df_y[label_column]==1].tolist()
         ifalse = df_y.index[df_y[label_column]==0].tolist()
 
+        # min then for loop ?
         if len(itrue) > len(ifalse):
             itrue = random.choices(itrue, k=len(ifalse))
         else:
@@ -93,10 +114,22 @@ class Dataset:
         return df_y
 
     @classmethod
-    def get_dataset(cls, balancing: bool=True, discretizing: bool=True, hot_encoding: bool=True, na_handling: str="drop", rmv_pct: Union[float|bool]=False) -> Tuple[ndarray, ndarray]:
+    def get_dataset(
+            cls, 
+            balancing: bool=True, 
+            discretizing: bool=True, 
+            hot_encoding: bool=True, 
+            na_handling: str="drop", 
+            rmv_pct: Union[float|bool]=False,
+            keep_label: Union[int|Sequence[str]]=2,
+        ) -> Tuple[ndarray, ndarray]:
+
         label_column = cls.get_label_column()
         df = cls.get_df_data()
         df = cls.remove_na(cls, df, na_handling)
+
+        if df[label_column].nunique() > 2:
+            cls.multiclass_handling(df, label_column, keep_label)
 
         if rmv_pct:
             df = cls.remove_percentile(df, rmv_pct)
