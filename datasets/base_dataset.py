@@ -38,7 +38,7 @@ class Dataset:
         if len(keep_label) < 2:
             raise ValueError("Need at least two labels")
 
-        df = df[df["Class"].str.contains("|".join(keep_label))].reset_index()
+        df = df[df[label_column].str.contains("|".join(keep_label))].reset_index()
 
         return df
 
