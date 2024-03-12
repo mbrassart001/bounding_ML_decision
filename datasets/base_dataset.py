@@ -4,6 +4,8 @@ import pandas as pd
 from numpy import ndarray
 from typing import Tuple, Union, Hashable, Mapping, Sequence
 
+pd.options.mode.copy_on_write = True
+
 class Dataset:
     @staticmethod
     def get_df_data() -> pd.DataFrame:
