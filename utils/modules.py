@@ -56,7 +56,7 @@ class MaxLayer(torch.nn.Module):
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
         if not isinstance(inputs, OrderedDict):
-            raise ValueError(f"Use mapping objects as inputs instead of {type(inputs)}")
+            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
         
         input = torch.stack(list(inputs.values()))
 
@@ -104,7 +104,7 @@ class MaxHierarchicalLayer(torch.nn.Module):
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
         if not isinstance(inputs, OrderedDict):
-            raise ValueError(f"Use mapping objects as inputs instead of {type(inputs)}")
+            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
         
         input = torch.stack(list(inputs.values()))
 
@@ -145,7 +145,7 @@ class MinLayer(torch.nn.Module):
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
         if not isinstance(inputs, OrderedDict):
-            raise ValueError(f"Use mapping objects as inputs instead of {type(inputs)}")
+            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
 
         input = torch.stack(list(inputs.values()))
 
