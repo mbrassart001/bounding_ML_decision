@@ -5,13 +5,13 @@ sys.path.append(os.path.dirname(__file__))
 import torch
 import more_torch_functions as mtf
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Mapping
 from torch import Tensor
 from collections import OrderedDict
 from numbers import Number      
 
 class Parallel(torch.nn.ModuleDict):
-    def __init__(self, modules=None) -> None:
+    def __init__(self, modules: Optional[Mapping[str, torch.nn.Module]]=None) -> None:
         super().__init__(modules=modules)
 
     def forward(self, input: Tensor) -> Tensor:
@@ -26,7 +26,6 @@ class MaxFunction(torch.autograd.Function):
     def forward(ctx, input: Tensor, backward_method: Callable[[Tensor, Tensor, Tensor], Tensor]) -> Tensor:
         inputs = input.unbind()
 
-        # maximum ? addition ? some sort of mean ? mix of the methods ?
         output = mtf.maximum(inputs)
 
         ctx.save_for_backward(input, output)
@@ -55,9 +54,9 @@ class MaxLayer(torch.nn.Module):
             raise ValueError(f"Supported methods are {', '.join(methods)}")
         self.backward_func = getattr(MaxFunction, "backward_blame_" + backward_method)
 
-    def forward(self, inputs: OrderedDict[Tensor]) -> Tensor:
+    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
         if not isinstance(inputs, OrderedDict):
-            raise ValueError(f"Use OrderedDict as inputs instead of {type(inputs)}")
+            raise ValueError(f"Use mapping objects as inputs instead of {type(inputs)}")
         
         input = torch.stack(list(inputs.values()))
 
@@ -103,9 +102,9 @@ class MaxHierarchicalLayer(torch.nn.Module):
         self.fp_mult = fp_multiplier
         self.cov_mult = cov_multiplier
 
-    def forward(self, inputs: OrderedDict[Tensor]) -> Tensor:
+    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
         if not isinstance(inputs, OrderedDict):
-            raise ValueError(f"Use OrderedDict as inputs instead of {type(inputs)}")
+            raise ValueError(f"Use mapping objects as inputs instead of {type(inputs)}")
         
         input = torch.stack(list(inputs.values()))
 
@@ -144,9 +143,9 @@ class MinLayer(torch.nn.Module):
             raise ValueError(f"Supported methods are {', '.join(methods)}")
         self.backward_func = getattr(MinFunction, "backward_blame_" + backward_method)
 
-    def forward(self, inputs: OrderedDict[Tensor]) -> Tensor:
+    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
         if not isinstance(inputs, OrderedDict):
-            raise ValueError(f"Use OrderedDict as inputs instead of {type(inputs)}")
+            raise ValueError(f"Use mapping objects as inputs instead of {type(inputs)}")
 
         input = torch.stack(list(inputs.values()))
 
