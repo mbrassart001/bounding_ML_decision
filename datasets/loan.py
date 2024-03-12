@@ -1,22 +1,24 @@
 import os
-from pandas import read_csv, get_dummies
+import pandas as pd
 from .base_dataset import Dataset
+
+from typing import Hashable, Mapping
 
 FILENAME = os.path.join(os.path.dirname(__file__), "loan", "loan_data_set.csv")
 
 class LoanDataset(Dataset):
     @staticmethod
-    def get_df_data():
-        df = read_csv(FILENAME, sep=",")
+    def get_df_data() -> pd.DataFrame:
+        df = pd.read_csv(FILENAME, sep=",")
         df = df.drop(columns=["Loan_ID"])
         return df
     
     @staticmethod
-    def get_label_column():
+    def get_label_column() -> str:
         return "Loan_Status"
     
     @staticmethod
-    def remove_percentile(df, pct):
+    def remove_percentile(df: pd.DataFrame, pct: float) -> pd.DataFrame:
         df_rank = df[["ApplicantIncome", "CoapplicantIncome"]]
         df_rank["rankA"] = df_rank[["ApplicantIncome"]].rank(pct=True)
         df_rank["rankCo"] = df_rank["CoapplicantIncome"].rank(pct=True)
@@ -27,7 +29,7 @@ class LoanDataset(Dataset):
         return df_res
 
     @staticmethod
-    def na_fill_values(df):
+    def na_fill_values(df: pd.DataFrame) -> Hashable | Mapping | pd.Series | pd.DataFrame:
         return {
             'Gender': 'Male',
             'Married': 'No',
