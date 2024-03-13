@@ -1,5 +1,6 @@
 import random
 import pandas as pd
+import numpy as np
 
 from numpy import ndarray
 from typing import Tuple, Union, Hashable, Mapping, Sequence
@@ -115,16 +116,16 @@ class Dataset:
 
         return df_y
 
-    @classmethod
-    def get_dataset(
-            cls, 
-            balancing: bool=True, 
-            discretizing: bool=True, 
-            hot_encoding: bool=True, 
-            na_handling: str="drop", 
-            rmv_pct: Union[float|bool]=False,
-            keep_label: Union[int|Sequence[str]]=2,
-        ) -> Tuple[ndarray, ndarray]:
+    @staticmethod
+    def _get_dataset(
+        cls, 
+        balancing: bool = True, 
+        discretizing: bool = True, 
+        hot_encoding: bool = True, 
+        na_handling: str = "drop", 
+        rmv_pct: Union[float|bool] = False,
+        keep_label: Union[int|Sequence[str]] = 2,
+    ) -> Tuple[ndarray, ndarray]:
 
         label_column = cls.get_label_column()
         df = cls.get_df_data()
@@ -152,7 +153,50 @@ class Dataset:
         if hot_encoding:
             df_x = cls.hot_encode(df_x, hot_encode_columns)
         
-        x = df_x.to_numpy(dtype=float)
-        y = df_y.to_numpy(dtype=float)
+        x = df_x.to_numpy()
+        y = df_y.to_numpy()
         
+        return x, y
+
+    @classmethod
+    def get_dataset(
+        cls, 
+        balancing: bool = True, 
+        discretizing: bool = True, 
+        hot_encoding: bool = True, 
+        na_handling: str = "drop", 
+        rmv_pct: Union[float|bool] = False,
+        keep_label: Union[int|Sequence[str]] = 2,
+    ) -> Tuple[ndarray, ndarray]:
+
+        return Dataset._get_dataset(
+            cls=cls,
+            balancing=balancing,
+            discretizing=discretizing,
+            hot_encoding=hot_encoding,
+            na_handling=na_handling,
+            rmv_pct=rmv_pct,
+            keep_label=keep_label,
+        )
+    
+class ImageDataset(Dataset):
+    @classmethod
+    def get_dataset(
+        cls, 
+        balancing: bool = True,
+        na_handling: str = "drop", 
+        keep_label: int | Sequence[str] = 2
+    ) -> Tuple[ndarray]:
+
+        x, y = Dataset._get_dataset(
+            cls=cls,
+            balancing=balancing, 
+            discretizing=False,
+            hot_encoding=False,
+            na_handling=na_handling,
+            rmv_pct=False,
+            keep_label=keep_label,
+        )
+
+        x = np.array(list(np.ravel(x)))
         return x, y
