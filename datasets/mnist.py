@@ -1,9 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
-from base_dataset import ImageDataset
+from .base_dataset import ImageDataset
 
-FILENAME = lambda set, type : os.path.join(os.path.abspath(''), "mnist", f"mnist-{set}-{type}.npy")
+FILENAME = lambda set, type : os.path.join(os.path.dirname(__file__), "mnist", f"mnist-{set}-{type}.npy")
 
 class MnistDataset(ImageDataset):
     @staticmethod
