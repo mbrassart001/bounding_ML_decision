@@ -10,6 +10,18 @@ from sklearn import metrics
 
 from torch.utils.data import DataLoader, TensorDataset
 
+def set_current_epoch(epoch):
+    global glob_epoch
+    glob_epoch = epoch
+
+def get_current_epoch():
+    global glob_epoch
+    return glob_epoch
+
+def reset_current_epoch():
+    global glob_epoch
+    glob_epoch = -2
+
 def cm(y_true, y_pred):
     confusion_matrix = metrics.confusion_matrix(y_true, y_pred)
     cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix, display_labels=[False, True])
@@ -56,10 +68,11 @@ def train_model(x, y, model, criterion, optimizer, max_epoch=1):
 
     return y_pred
 
-def one_epoch(loader, model, criterion, optimizer, concat=False):
+def one_epoch(loader, model, criterion=None, optimizer=None, concat=False):
     y_pred = torch.Tensor([]) if concat else None
     for inputs, labels in loader:
-        optimizer.zero_grad()
+        if model.training:
+            optimizer.zero_grad()
         outputs = model(inputs)
         if model.training:
             loss = criterion(outputs, labels)
@@ -73,8 +86,10 @@ def one_epoch(loader, model, criterion, optimizer, concat=False):
 
 def train_model_batch(train_loader, model, criterion, optimizer, max_epoch=1):
     for epoch in range(max_epoch):
+        set_current_epoch(epoch)
         model.train()
         y_pred = one_epoch(train_loader, model, criterion, optimizer, concat=epoch+1 == max_epoch)
+
     return y_pred
 
 def cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, batch_size=-1, **kw_train):
@@ -99,8 +114,9 @@ def _cross_valid_batch(X, Y, model, criterion, optimizer, skf, batch_size, *hook
 
         y_pred = train_model_batch(train_loader, model, criterion, optimizer, **kw_train)
         y_pred_train = y_pred.detach().round()
+        reset_current_epoch()
         model.eval()
-        y_pred_eval = one_epoch(val_loader, model, criterion, optimizer, concat=True).detach()
+        y_pred_eval = one_epoch(val_loader, model, concat=True).detach()
         yield y_pred_train, y_train, y_pred_eval, y_valid
 
 def _cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, **kw_train):
