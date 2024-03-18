@@ -55,7 +55,7 @@ class MaxLayer(torch.nn.Module):
         self.backward_func = getattr(MaxFunction, "backward_blame_" + backward_method)
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
-        if not isinstance(inputs, OrderedDict):
+        if not isinstance(inputs, Mapping):
             raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
         
         input = torch.stack(list(inputs.values()))
@@ -103,7 +103,7 @@ class MaxHierarchicalLayer(torch.nn.Module):
         self.cov_mult = cov_multiplier
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
-        if not isinstance(inputs, OrderedDict):
+        if not isinstance(inputs, Mapping):
             raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
         
         input = torch.stack(list(inputs.values()))
@@ -144,7 +144,7 @@ class MinLayer(torch.nn.Module):
         self.backward_func = getattr(MinFunction, "backward_blame_" + backward_method)
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
-        if not isinstance(inputs, OrderedDict):
+        if not isinstance(inputs, Mapping):
             raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
 
         input = torch.stack(list(inputs.values()))

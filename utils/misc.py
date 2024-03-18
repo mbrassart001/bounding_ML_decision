@@ -72,7 +72,7 @@ def one_epoch(loader, model, criterion=None, optimizer=None, concat=False):
     y_pred = torch.Tensor([]) if concat else None
     for inputs, labels in loader:
         if model.training:
-            optimizer.zero_grad()
+            model.zero_grad()
         outputs = model(inputs)
         if model.training:
             loss = criterion(outputs, labels)
@@ -116,8 +116,8 @@ def _cross_valid_batch(X, Y, model, criterion, optimizer, skf, batch_size, *hook
         y_pred_train = y_pred.detach().round()
         reset_current_epoch()
         model.eval()
-        y_pred_eval = one_epoch(val_loader, model, concat=True).detach()
-        yield y_pred_train, y_train, y_pred_eval, y_valid
+        y_pred_valid = one_epoch(val_loader, model, concat=True).detach()
+        yield y_pred_train, y_train, y_pred_valid, y_valid
 
 def _cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, **kw_train):
     for train_index, valid_index in skf.split(X, Y):
