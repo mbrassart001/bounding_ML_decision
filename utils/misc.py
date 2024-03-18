@@ -85,9 +85,9 @@ def one_epoch(loader, model, criterion=None, optimizer=None, concat=False):
     return y_pred
 
 def train_model_batch(train_loader, model, criterion, optimizer, max_epoch=1):
+    model.train()
     for epoch in range(max_epoch):
         set_current_epoch(epoch)
-        model.train()
         y_pred = one_epoch(train_loader, model, criterion, optimizer, concat=epoch+1 == max_epoch)
 
     return y_pred
