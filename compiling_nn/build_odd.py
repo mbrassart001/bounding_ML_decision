@@ -210,7 +210,7 @@ def layers2odds(layers):
         odds_layers.append(odds)
     return odds_layers
 
-def combine_odds(odds):
+def combine_odds(odds, return_vars=False):
     prev_layer = [(odd.bdd, odd.eda_vars) for odd in odds[0]]
     p_vars = prev_layer[0][1]
     for odds_next in odds[1:]:
@@ -223,7 +223,9 @@ def combine_odds(odds):
 
         prev_layer = switch_layer
     
-    return prev_layer[0]
+    if return_vars:
+        return prev_layer[0]
+    return prev_layer[0][0]
 
 def compile_nn(net, verbose=False):
     params = list(net.parameters())
