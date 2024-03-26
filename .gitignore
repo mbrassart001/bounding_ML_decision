@@ -1,4 +1,5 @@
 compiling_nn/odd
+backup/
 datasets/spect/DonorNote.txt
 tmp*
 *.zip
