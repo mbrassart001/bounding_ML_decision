@@ -1,6 +1,7 @@
 import time
 import pyeda.inter as inter
 import pyeda.boolalg as boolalg
+from multiprocessing import Pool
 from graphviz import Digraph, Source
 from IPython.display import SVG, display
 from .utils_odd import timelimit, timecounter
@@ -196,7 +197,42 @@ class Interval:
             self.right &= other.right
 
         return self
+
+# def _layers2odds_mp(i, layer):
+#     odds = list()
+#     label = f"l{i}_i" if i else "i"
+#     for weights, bias in zip(*layer):
+#         odd = ODD()
+#         odd.build_odd_rec(weights, -bias, label)
+#         odds.append(odd)
+#         odd.clear_cache()
+#     return odds
+
+# def layers2odds_mp(layers):
+#     with Pool(processes=4) as pool:
+#         odds_layers = pool.starmap(_layers2odds_mp, enumerate(layers))
+#     return odds_layers
+
+# def _combine_odds_mp(p_bdds, n_bdd, n_vars):
+#     res_bdd = n_bdd.compose({n_var: p_bdd for p_bdd, n_var in zip(p_bdds, n_vars)})
+#     return res_bdd
+
+# def combine_odds_mp(odds, return_vars=False):
+#     prev_layer = [(odd.bdd, odd.eda_vars) for odd in odds[0]]
+#     p_vars = prev_layer[0][1]
+#     for odds_next in odds[1:]:
+#         next_layer = [(odd.bdd, odd.eda_vars) for odd in odds_next]
+        
+#         with Pool(processes=4) as pool:
+#             switch_layer = pool.starmap(_combine_odds_mp, [([x[0] for x in prev_layer], ) + y for y in next_layer])
+#         print(switch_layer)
+
+#         prev_layer = switch_layer
     
+#     if return_vars:
+#         return prev_layer[0]
+#     return prev_layer[0][0]
+
 def layers2odds(layers):
     odds_layers = []
     for i, layer in enumerate(layers):
@@ -228,14 +264,14 @@ def combine_odds(odds, return_vars=False):
     return prev_layer[0][0]
 
 def compile_nn(net, verbose=False):
-    params = list(net.parameters())
+    params = [param.detach() for param in net.parameters()]
     if verbose:
         print("converting to ODDs : ", end="")
         start_convert = time.perf_counter()
         
     odds = layers2odds(zip(params[::2], params[1::2]))
     if verbose:
-        print(f"DONE ({time.perf_counter()-start_convert:1.2e})\ncombining ODDs : ", end="")
+        print(f"DONE ({time.perf_counter()-start_convert:1.2e})\ncombining ODDs     : ", end="")
         start_combine = time.perf_counter()
 
     res = combine_odds(odds)
