@@ -10,6 +10,10 @@ def reset_model(model: torch.nn.Module) -> None:
         if hasattr(layer, "reset_parameters"):
             layer.reset_parameters()
 
+def freeze_model(model: torch.nn.Module) -> None:
+    for param in model.parameters():
+        param.requires_grad = False
+
 def _apply_reduce_(func: Callable[[Tensor, Tensor], Tensor], tensors: Iterable[Tensor]) -> Tensor:
     if len(tensors) < 1:
         raise ValueError
