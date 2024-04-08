@@ -156,6 +156,9 @@ class Figures(widgets.HBox):
         self.widgets_init(options)
         self.figure_init()
 
+        self.annotate_cols_args = dict()
+        self.annotate_rows_args = dict()
+
     def widgets_init(self, options):
         self.output = widgets.Output()
         toggle_buttons = widgets.ToggleButtons(
@@ -227,21 +230,35 @@ class Figures(widgets.HBox):
         self.annotate_cols(cols, pad)
         self.annotate_rows(rows, pad)
 
-    def annotate_cols(self, cols, pad=5):
-        for ax, col in zip(self.axs[0], cols):
-            ax.annotate(
-                col, xy=(0.5, 1), xytext=(0, pad),
-                xycoords='axes fraction', textcoords='offset points',
-                size='large', ha='center', va='baseline'
+    def _annotate_cols(self):
+        cols = self.annotate_cols_args.get('cols')
+        pad = self.annotate_cols_args.get('pad')
+        if cols is not None and pad is not None:
+            for ax, col in zip(self.axs[0], cols):
+                ax.annotate(
+                    col, xy=(0.5, 1), xytext=(0, pad),
+                    xycoords='axes fraction', textcoords='offset points',
+                    size='large', ha='center', va='baseline'
             )
 
+    def annotate_cols(self, cols, pad=5):
+        self.annotate_cols_args.update({'cols': cols, 'pad': pad})
+        self._annotate_cols()
+
+    def _annotate_rows(self):
+        rows = self.annotate_rows_args.get('rows')
+        pad = self.annotate_rows_args.get('pad')
+        if rows is not None and pad is not None:
+            for ax, row in zip(self.axs[:,0], rows):
+                ax.annotate(
+                    row, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad - pad, 0),
+                    xycoords=ax.yaxis.label, textcoords='offset points',
+                    size='large', ha='right', va='center'
+                )
+    
     def annotate_rows(self, rows, pad=5):
-        for ax, row in zip(self.axs[:,0], rows):
-            ax.annotate(
-                row, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad - pad, 0),
-                xycoords=ax.yaxis.label, textcoords='offset points',
-                size='large', ha='right', va='center'
-            )
+        self.annotate_rows_args.update({'rows': rows, 'pad': pad})
+        self._annotate_rows()
 
     def plot_autocenter(self, center: bool):
         self.center_plot = center
@@ -292,6 +309,8 @@ class Figures(widgets.HBox):
                 ax.cla()
             self.lines_init()
             self._legend()
+            self._annotate_cols()
+            self._annotate_rows()
             self.visible_legend(True)
             self.toggle_buttons.options = self.l + ['all']
             self.toggle_buttons.value = 'all'
