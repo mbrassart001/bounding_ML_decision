@@ -86,6 +86,15 @@ class Dataset:
     def hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
         df_x = pd.get_dummies(df_x, columns=columns, drop_first=True)
         return df_x
+    
+    @staticmethod
+    def special_hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
+        df_x_res = pd.DataFrame()
+        for col in columns:
+            unique_values = sorted(df_x[col].unique())[1:]
+            for val in unique_values:
+                df_x_res[f'{col}_{val}'] = (df_x[col] >= val).astype(int)
+        return df_x_res
 
     # TODO multi-class
     @staticmethod
@@ -151,7 +160,7 @@ class Dataset:
             hot_encode_columns = df_x.select_dtypes(exclude="number").columns
         
         if hot_encoding:
-            df_x = cls.hot_encode(df_x, hot_encode_columns)
+            df_x = cls.special_hot_encode(df_x, hot_encode_columns)
         
         x = df_x.to_numpy()
         y = df_y.to_numpy()
