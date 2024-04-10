@@ -5,36 +5,50 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import ipywidgets as widgets
-from sklearn import metrics
+from sklearn import metrics, model_selection
+
+from typing import Sequence, Generator, Optional, Dict, Any
+
+import torch.utils
+import torch.utils.data
 
 sys.path.append(os.path.dirname(__file__))
 
 import more_torch_functions as mtf
 from torch.utils.data import DataLoader, TensorDataset
 
-def set_current_epoch(epoch):
+def set_current_epoch(epoch: int) -> None:
     global glob_epoch
     glob_epoch = epoch
 
-def get_current_epoch():
+def get_current_epoch() -> None:
     global glob_epoch
     return glob_epoch
 
-def reset_current_epoch():
+def reset_current_epoch() -> None:
     global glob_epoch
     glob_epoch = -2
 
-def cm(y_true, y_pred):
+def cm(
+    y_true: Sequence[float],
+    y_pred: Sequence[float],
+) -> metrics.ConfusionMatrixDisplay:
     confusion_matrix = metrics.confusion_matrix(y_true, y_pred)
     cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix, display_labels=[False, True])
     return cm_display
 
-def plot_cm(y_true, y_pred):
+def plot_cm(
+    y_true: Sequence[float],
+    y_pred: Sequence[float],
+) -> None:
     cm_display = cm(y_true, y_pred)
     _, ax = plt.subplots(1, 1, figsize=(4,8))
     cm_display.plot(ax=ax, colorbar=False)
 
-def plot_combine_cm(cms, titles=None):
+def plot_combine_cm(
+    cms: Sequence[metrics.ConfusionMatrixDisplay],
+    titles: Optional[Sequence[str]] = None,
+) -> None:
     n = len(cms)
     fig, axs = plt.subplots(1, n, figsize=(4*n, 8))
     if titles:
@@ -46,7 +60,10 @@ def plot_combine_cm(cms, titles=None):
             cm.plot(ax=ax, colorbar=False)
     fig.tight_layout()
 
-def cov_score(y_true, y_pred):
+def cov_score(
+    y_true: Sequence[int],
+    y_pred: Sequence[int],
+) -> Dict[int, float]:
     labels = np.unique(y_true)
     scores = {}
 
@@ -57,7 +74,14 @@ def cov_score(y_true, y_pred):
 
     return scores
 
-def train_model(x, y, model, criterion, optimizer, max_epoch=1):
+def train_model(
+    x: torch.Tensor, 
+    y: torch.Tensor, 
+    model: torch.nn.Module, 
+    criterion: Any, 
+    optimizer: Any, 
+    max_epoch: int = 1,
+):
     for _ in range(max_epoch):
         model.train()
         y_pred = model(x)
@@ -70,7 +94,13 @@ def train_model(x, y, model, criterion, optimizer, max_epoch=1):
 
     return y_pred
 
-def one_epoch(loader, model, criterion=None, optimizer=None, concat=False):
+def one_epoch(
+    loader: torch.utils.data.DataLoader,
+    model: torch.nn.Module,
+    criterion: Optional[Any] = None,
+    optimizer: Optional[Any] = None,
+    concat: bool = False,
+) -> torch.Tensor:
     y_pred = torch.Tensor([]) if concat else None
     for inputs, labels in loader:
         if model.training:
@@ -86,7 +116,13 @@ def one_epoch(loader, model, criterion=None, optimizer=None, concat=False):
 
     return y_pred
 
-def train_model_batch(train_loader, model, criterion, optimizer, max_epoch=1):
+def train_model_batch(
+    train_loader: torch.utils.data.DataLoader,
+    model: torch.nn.Module,
+    criterion: Any,
+    optimizer: Any,
+    max_epoch: int = 1
+) -> torch.Tensor:
     model.train()
     for epoch in range(max_epoch):
         set_current_epoch(epoch)
@@ -94,16 +130,36 @@ def train_model_batch(train_loader, model, criterion, optimizer, max_epoch=1):
 
     return y_pred
 
-def cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, batch_size=-1, **kw_train):
-    if batch_size < 0:
-        return _cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, **kw_train)
+def cross_valid(
+    x: torch.Tensor, 
+    y: torch.Tensor, 
+    model: torch.nn.Module, 
+    criterion: Any, 
+    optimizer: Any, 
+    skf: model_selection.StratifiedKFold, 
+    *hooks_data: Any, 
+    batch_size: Optional[int] = None,
+    **kw_train: Any,
+) -> Generator[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None]:
+    if batch_size is None:
+        return _cross_valid(x, y, model, criterion, optimizer, skf, *hooks_data, **kw_train)
     else:
-        return _cross_valid_batch(X, Y, model, criterion, optimizer, skf, batch_size, *hooks_data, **kw_train)
+        return _cross_valid_batch(x, y, model, criterion, optimizer, skf, batch_size, *hooks_data, **kw_train)
 
-def _cross_valid_batch(X, Y, model, criterion, optimizer, skf, batch_size, *hooks_data, **kw_train):
-    for train_index, valid_index in skf.split(X, Y):
-        x_train, x_valid = X[train_index], X[valid_index]
-        y_train, y_valid = Y[train_index], Y[valid_index]
+def _cross_valid_batch(
+    x: torch.Tensor, 
+    y: torch.Tensor, 
+    model: torch.nn.Module, 
+    criterion: Any, 
+    optimizer: Any, 
+    skf: model_selection.StratifiedKFold, 
+    batch_size: int, 
+    *hooks_data: Any, 
+    **kw_train: Any,
+) -> Generator[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None]:
+    for train_index, valid_index in skf.split(x, y):
+        x_train, x_valid = x[train_index], x[valid_index]
+        y_train, y_valid = y[train_index], y[valid_index]
 
         train_dataset = TensorDataset(x_train.unsqueeze(1), y_train)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -121,10 +177,19 @@ def _cross_valid_batch(X, Y, model, criterion, optimizer, skf, batch_size, *hook
         y_pred_valid = one_epoch(val_loader, model, concat=True).detach()
         yield y_pred_train, y_train, y_pred_valid, y_valid
 
-def _cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, **kw_train):
-    for train_index, valid_index in skf.split(X, Y):
-        x_train, x_valid = X[train_index], X[valid_index]
-        y_train, y_valid = Y[train_index], Y[valid_index]
+def _cross_valid(
+    x: torch.Tensor, 
+    y: torch.Tensor, 
+    model: torch.nn.Module, 
+    criterion: Any, 
+    optimizer: Any, 
+    skf: model_selection.StratifiedKFold,
+    *hooks_data: Any,
+    **kw_train: Any,
+) -> Generator[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], None, None]:
+    for train_index, valid_index in skf.split(x, y):
+        x_train, x_valid = x[train_index], x[valid_index]
+        y_train, y_valid = y[train_index], y[valid_index]
 
         mtf.reset_model(model)
         
@@ -137,12 +202,22 @@ def _cross_valid(X, Y, model, criterion, optimizer, skf, *hooks_data, **kw_train
         y_pred_eval = model(x_valid).detach()
         yield y_pred_train, y_train, y_pred_eval, y_valid
 
-def combine_prompts(prompts, sep):
+def combine_prompts(
+    prompts: Sequence[str],
+    sep: str,
+) -> str:
     plen = len(prompts)//2
     return '\n\t              '.join([f"{vprompt}{sep}{tprompt}" for vprompt, tprompt in zip(prompts[:plen], prompts[plen:])])
 
 class Figures(widgets.HBox):
-    def __init__(self, x, y, labels=None, options=None, **kwargs):
+    def __init__(
+        self, 
+        x: Sequence[float | int], 
+        y: Sequence[float | int], 
+        labels: Optional[Sequence[str | float | int]] = None, 
+        options: Optional[Sequence[str | float | int]] = None, 
+        **kwargs: Any,
+    ) -> None:
         super().__init__()
  
         self.x = x
@@ -159,7 +234,10 @@ class Figures(widgets.HBox):
         self.annotate_cols_args = dict()
         self.annotate_rows_args = dict()
 
-    def widgets_init(self, options):
+    def widgets_init(
+        self,
+        options: Optional[Sequence[str | float | int]],
+    ) -> None:
         self.output = widgets.Output()
         toggle_buttons = widgets.ToggleButtons(
             options=self.l + ['all'],
@@ -181,14 +259,14 @@ class Figures(widgets.HBox):
 
         self.children = [controls, self.output]
 
-    def lines_init(self):
+    def lines_init(self) -> None:
         self.lines = []
         for ax, y in zip(self.axs.flat, self.y):
             for y_values, label in zip(y, self.l):
                 self.lines.append(ax.plot(self.x, y_values, **self.fig_kw, label=label)[0])
             ax.grid(True)
 
-    def figure_init(self):
+    def figure_init(self) -> None:
         self.curve_per_plot = len(self.l)
         self.plot_autocenter(True)
 
@@ -200,13 +278,13 @@ class Figures(widgets.HBox):
         self.fig.canvas.toolbar_position = 'bottom'
         self.fig.canvas.header_visible = False
 
-    def visible_legend(self, visible: bool):
+    def visible_legend(self, visible: bool) -> None:
         for ax in self.axs.flat:
             legend = ax.legend_
             if legend is not None:
                 legend.set_visible(visible)
 
-    def _legend(self):
+    def _legend(self) -> None:
         col = self.legend_args.get('col')
         row = self.legend_args.get('row')
         kwargs = self.legend_args.get('kwargs')
@@ -222,15 +300,25 @@ class Figures(widgets.HBox):
         for ax in axs:
             ax.legend(**kwargs)
 
-    def legend(self, col=None, row=None, **kwargs):
+    def legend(
+        self,
+        col: Optional[int] = None,
+        row: Optional[int] = None,
+        **kwargs: Any,
+    ) -> None:
         self.legend_args = {'col': col, 'row': row, 'kwargs': kwargs}
         self._legend()
 
-    def annotate(self, cols: int, rows: int, pad=5):
+    def annotate(
+        self,
+        cols: Sequence[str],
+        rows: Sequence[str],
+        pad: int = 5,
+    ) -> None:
         self.annotate_cols(cols, pad)
         self.annotate_rows(rows, pad)
 
-    def _annotate_cols(self):
+    def _annotate_cols(self) -> None:
         cols = self.annotate_cols_args.get('cols')
         pad = self.annotate_cols_args.get('pad')
         if cols is not None and pad is not None:
@@ -239,13 +327,17 @@ class Figures(widgets.HBox):
                     col, xy=(0.5, 1), xytext=(0, pad),
                     xycoords='axes fraction', textcoords='offset points',
                     size='large', ha='center', va='baseline'
-            )
+                )
 
-    def annotate_cols(self, cols, pad=5):
+    def annotate_cols(
+        self,
+        cols: Sequence[str],
+        pad: int = 5,
+    ) -> None:
         self.annotate_cols_args.update({'cols': cols, 'pad': pad})
         self._annotate_cols()
 
-    def _annotate_rows(self):
+    def _annotate_rows(self) -> None:
         rows = self.annotate_rows_args.get('rows')
         pad = self.annotate_rows_args.get('pad')
         if rows is not None and pad is not None:
@@ -256,14 +348,24 @@ class Figures(widgets.HBox):
                     size='large', ha='right', va='center'
                 )
     
-    def annotate_rows(self, rows, pad=5):
+    def annotate_rows(
+        self,
+        rows: Sequence[str],
+        pad: int = 5,
+    ) -> None:
         self.annotate_rows_args.update({'rows': rows, 'pad': pad})
         self._annotate_rows()
 
-    def plot_autocenter(self, center: bool):
+    def plot_autocenter(
+        self,
+        center: bool
+    ) -> None:
         self.center_plot = center
 
-    def update(self, change):
+    def update(
+        self,
+        change: Dict[str: Any],
+    ) -> None:
         try:
             new_index = change.new.get('index')
         except AttributeError:
@@ -300,7 +402,10 @@ class Figures(widgets.HBox):
             
             self.fig.canvas.draw()
     
-    def change_orientation(self, change):
+    def change_orientation(
+        self,
+        change: Dict[str, Any]
+    ) -> None:
         if change.get('name') == 'value':
             self.x, self.l = self.l, self.x
             self.y = [y.T for y in self.y]
