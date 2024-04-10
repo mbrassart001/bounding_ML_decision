@@ -78,8 +78,8 @@ def train_model(
     x: torch.Tensor, 
     y: torch.Tensor, 
     model: torch.nn.Module, 
-    criterion: Any, 
-    optimizer: Any, 
+    criterion: torch.nn.Module, 
+    optimizer: torch.nn.modules.loss._Loss, 
     max_epoch: int = 1,
 ):
     for _ in range(max_epoch):
@@ -97,8 +97,8 @@ def train_model(
 def one_epoch(
     loader: torch.utils.data.DataLoader,
     model: torch.nn.Module,
-    criterion: Optional[Any] = None,
-    optimizer: Optional[Any] = None,
+    criterion: Optional[torch.nn.Module] = None,
+    optimizer: Optional[torch.nn.modules.loss._Loss] = None,
     concat: bool = False,
 ) -> torch.Tensor:
     y_pred = torch.Tensor([]) if concat else None
@@ -119,8 +119,8 @@ def one_epoch(
 def train_model_batch(
     train_loader: torch.utils.data.DataLoader,
     model: torch.nn.Module,
-    criterion: Any,
-    optimizer: Any,
+    criterion: torch.nn.modules.loss._Loss,
+    optimizer: torch.nn.Module,
     max_epoch: int = 1
 ) -> torch.Tensor:
     model.train()
@@ -134,8 +134,8 @@ def cross_valid(
     x: torch.Tensor, 
     y: torch.Tensor, 
     model: torch.nn.Module, 
-    criterion: Any, 
-    optimizer: Any, 
+    criterion: torch.nn.modules.loss._Loss,
+    optimizer: torch.nn.Module, 
     skf: model_selection.StratifiedKFold, 
     *hooks_data: Any, 
     batch_size: Optional[int] = None,
@@ -150,8 +150,8 @@ def _cross_valid_batch(
     x: torch.Tensor, 
     y: torch.Tensor, 
     model: torch.nn.Module, 
-    criterion: Any, 
-    optimizer: Any, 
+    criterion: torch.nn.Module, 
+    optimizer: torch.nn.modules.loss._Loss, 
     skf: model_selection.StratifiedKFold, 
     batch_size: int, 
     *hooks_data: Any, 
@@ -181,8 +181,8 @@ def _cross_valid(
     x: torch.Tensor, 
     y: torch.Tensor, 
     model: torch.nn.Module, 
-    criterion: Any, 
-    optimizer: Any, 
+    criterion: torch.nn.Module, 
+    optimizer: torch.nn.modules.loss._Loss, 
     skf: model_selection.StratifiedKFold,
     *hooks_data: Any,
     **kw_train: Any,
@@ -364,7 +364,7 @@ class Figures(widgets.HBox):
 
     def update(
         self,
-        change: Dict[str: Any],
+        change: Any,
     ) -> None:
         try:
             new_index = change.new.get('index')
@@ -404,7 +404,7 @@ class Figures(widgets.HBox):
     
     def change_orientation(
         self,
-        change: Dict[str, Any]
+        change: Any,
     ) -> None:
         if change.get('name') == 'value':
             self.x, self.l = self.l, self.x
