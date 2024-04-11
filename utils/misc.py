@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import ipywidgets as widgets
 from sklearn import metrics, model_selection
 
-from typing import Sequence, Generator, Optional, Dict, Any
+from typing import Sequence, Generator, Optional, Callable, Dict, Any
 
 import torch.utils
 import torch.utils.data
@@ -16,6 +16,10 @@ sys.path.append(os.path.dirname(__file__))
 
 import more_torch_functions as mtf
 from torch.utils.data import DataLoader, TensorDataset
+
+FILE_DIR = os.path.dirname(__file__)
+PTH_PATH = os.path.join(FILE_DIR, "checkpoints")
+os.makedirs(PTH_PATH, exist_ok=True)
 
 def set_current_epoch(epoch: int) -> None:
     global glob_epoch
@@ -81,7 +85,13 @@ def train_model(
     criterion: torch.nn.Module, 
     optimizer: torch.nn.modules.loss._Loss, 
     max_epoch: int = 1,
-):
+    x_valid: Optional[torch.Tensor] = None,
+    y_valid: Optional[torch.Tensor] = None,
+    metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
+) -> torch.Tensor:
+    saving_best_model = x_valid is not None and y_valid is not None and metric is not None
+    best_score = None
+
     for _ in range(max_epoch):
         model.train()
         y_pred = model(x)
@@ -91,6 +101,17 @@ def train_model(
         model.zero_grad()
         loss.backward()
         optimizer.step()
+
+        if saving_best_model:
+            with torch.no_grad():
+                valid_pred = model(x_valid)
+                score = metric(valid_pred, y_valid)
+                if best_score is None or score > best_score:
+                    best_score = score
+                    torch.save(model.state_dict(), os.path.join(PTH_PATH, "train_model.pth"))
+
+    if saving_best_model:
+        model.load_state_dict(torch.load(os.path.join(PTH_PATH, "train_model.pth")))
 
     return y_pred
 
