@@ -88,6 +88,7 @@ def train_model(
     x_valid: Optional[torch.Tensor] = None,
     y_valid: Optional[torch.Tensor] = None,
     metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
+    compare_metric: Optional[Callable[[Any, Any], bool]] = lambda best, new: new > best,
 ) -> torch.Tensor:
     saving_best_model = x_valid is not None and y_valid is not None and metric is not None
     best_score = None
@@ -106,7 +107,7 @@ def train_model(
             with torch.no_grad():
                 valid_pred = model(x_valid)
                 score = metric(valid_pred, y_valid)
-                if best_score is None or score > best_score:
+                if best_score is None or compare_metric(best_score, score):
                     best_score = score
                     torch.save(model.state_dict(), os.path.join(PTH_PATH, "train_model.pth"))
 
