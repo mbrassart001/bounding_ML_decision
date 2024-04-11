@@ -1,9 +1,10 @@
 import torch
 
 from torch import Tensor
+from typing import Any
 
 def loss_reduction(func):
-    def wrapper(obj, *args, **kwargs):
+    def wrapper(obj: torch.nn.modules.loss._Loss, *args: Any, **kwargs: Any) -> Tensor:
         loss = func(obj, *args, **kwargs)
 
         if obj.reduction == "mean":
