@@ -92,6 +92,7 @@ def train_model(
 ) -> torch.Tensor:
     saving_best_model = x_valid is not None and y_valid is not None and metric is not None
     best_score = None
+    modelpath = os.path.join(PTH_PATH, "train_model.pth")
 
     for _ in range(max_epoch):
         model.train()
@@ -109,10 +110,11 @@ def train_model(
                 score = metric(valid_pred, y_valid)
                 if best_score is None or compare_metric(best_score, score):
                     best_score = score
-                    torch.save(model.state_dict(), os.path.join(PTH_PATH, "train_model.pth"))
+                    torch.save(model.state_dict(), modelpath)
 
     if saving_best_model:
-        model.load_state_dict(torch.load(os.path.join(PTH_PATH, "train_model.pth")))
+        model.load_state_dict(torch.load(modelpath))
+        os.unlink(modelpath)
 
     return y_pred
 
