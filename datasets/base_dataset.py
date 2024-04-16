@@ -66,10 +66,11 @@ class Dataset:
     def discretize_numeric(df_x: pd.DataFrame) -> pd.DataFrame:
         nunique = df_x.nunique(axis=0)
         df_x_mean = df_x.mean(axis=0, numeric_only=True)
+        df_x_min = df_x.min(axis=0, numeric_only=True)
 
         for col, n in nunique.items():
-            if n > 4:
-                df_x[col] = df_x[col].apply(lambda x : min(4, x//(.5*df_x_mean[col])))
+            if n > 4 and col in df_x_mean.index:
+                df_x[col] = df_x[col].apply(lambda x : min(4, (x-df_x_min[col])//(.5*df_x_mean[col])))
         
         return df_x
 
@@ -88,12 +89,16 @@ class Dataset:
         return df_x
     
     @staticmethod
-    def special_hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
-        df_x_res = pd.DataFrame()
+    def numeric_hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
+        df_exclude = df_x.drop(columns=columns)
+
+        dummies = [df_exclude]
         for col in columns:
             unique_values = sorted(df_x[col].unique())[1:]
             for val in unique_values:
-                df_x_res[f'{col}_{val}'] = (df_x[col] >= val).astype(int)
+                dummies.append((df_x[col] >= val).astype(int))
+
+        df_x_res = pd.concat(dummies, axis=1)
         return df_x_res
 
     # TODO multi-class
@@ -149,18 +154,20 @@ class Dataset:
         df_x, df_y = cls.data_label_separation(df, label_column)
         df_y = cls.label_to_numeric(df_y, label_column)
 
-        if balancing:
-            df_x, df_y = cls.balance_dataset(df_x, df_y, label_column)
-
         if discretizing:
             df_x = cls.discretize_numeric(df_x)
-            hot_encode_columns = df_x.columns
+            numeric_hot_encode_columns = df_x.select_dtypes(include="number").columns
         else:
             df_x = cls.normalize_numeric(df_x)
-            hot_encode_columns = df_x.select_dtypes(exclude="number").columns
+            numeric_hot_encode_columns = []
         
         if hot_encoding:
-            df_x = cls.special_hot_encode(df_x, hot_encode_columns)
+            hot_encode_columns = df_x.select_dtypes(exclude="number").columns
+            df_x = cls.hot_encode(df_x, hot_encode_columns)
+            df_x = cls.numeric_hot_encode(df_x, numeric_hot_encode_columns)
+
+        if balancing:
+            df_x, df_y = cls.balance_dataset(df_x, df_y, label_column)
         
         x = df_x.to_numpy()
         y = df_y.to_numpy()
