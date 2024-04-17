@@ -4,3 +4,6 @@ from .dry_bean import DryBeanDataset
 from .obesity import ObesityDataset
 from .mnist import MnistDataset
 from .adult import AdultDataset
+from .bank_marketing import BankMarketingDataset
+from .contraceptive import ContraceptiveDataset
+from .compas import CompasDataset
