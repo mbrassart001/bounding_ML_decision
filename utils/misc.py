@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ipywidgets as widgets
 from sklearn import metrics, model_selection
+from copy import copy
 
 from typing import Sequence, Generator, Optional, Callable, Dict, Any
 
@@ -270,7 +271,7 @@ class Figures(widgets.HBox):
         )
         self.toggle_buttons = toggle_buttons
         toggle_buttons.observe(self.update)
-        controls = toggle_buttons
+        self.controls = toggle_buttons
 
         if options is not None:
             radio_buttons = widgets.RadioButtons(
@@ -279,9 +280,9 @@ class Figures(widgets.HBox):
                 value=options[0],
             )
             radio_buttons.observe(self.change_orientation)
-            controls = widgets.VBox([radio_buttons, toggle_buttons])
+            self.controls = widgets.VBox([radio_buttons, toggle_buttons])
 
-        self.children = [controls, self.output]
+        self.children = [self.controls, self.output]
 
     def lines_init(self) -> None:
         self.lines = []
@@ -294,8 +295,11 @@ class Figures(widgets.HBox):
         self.curve_per_plot = len(self.l)
         self.plot_autocenter(True)
 
+        nrows = self.subplots_kwargs.get('nrows', 1)
+        ncols = self.subplots_kwargs.get('ncols', 1)
+
         with self.output:
-            self.fig, self.axs = plt.subplots(**self.subplots_kwargs, constrained_layout=True, figsize=(5, 3.5))
+            self.fig, self.axs = plt.subplots(**self.subplots_kwargs, constrained_layout=True, figsize=(4*ncols, 2*nrows))
 
         self.lines_init()
 
@@ -312,6 +316,7 @@ class Figures(widgets.HBox):
         col = self.legend_args.get('col')
         row = self.legend_args.get('row')
         kwargs = self.legend_args.get('kwargs')
+
         if row is not None and col is not None:
             axs = [self.axs[row,col]]
         elif row is not None:
@@ -321,8 +326,17 @@ class Figures(widgets.HBox):
         else:
             axs = self.axs.flat
         
+        # ax_width, ax_height = axs[0].get_position().size
+
         for ax in axs:
             ax.legend(**kwargs)
+            # legend_position = legend.get_bbox_to_anchor().bounds
+            # legend_width = legend_position[2]
+            # legend_height = legend_position[3]
+            
+            # new_legend_x = ax.get_position().x0 + ax_width * 1.02
+            # new_legend_y = ax.get_position().y0 + ax_height * 0.5 - legend_height * 0.5
+            # legend.set_bbox_to_anchor((new_legend_x, new_legend_y, legend_width, legend_height), transform=ax.figure.transFigure)
 
     def legend(
         self,
@@ -332,6 +346,14 @@ class Figures(widgets.HBox):
     ) -> None:
         self.legend_args = {'col': col, 'row': row, 'kwargs': kwargs}
         self._legend()
+
+    def axhline(
+        self,
+        values: Sequence[int | float | None],
+        **kwargs: Any,
+    ) -> None:
+        for ax, v in zip(self.axs.flat, values):
+            ax.axhline(y=v, **kwargs)
 
     def annotate(
         self,

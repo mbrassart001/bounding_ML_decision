@@ -77,10 +77,12 @@ class AsymBCELoss(torch.nn.modules.loss._Loss):
 
     @loss_reduction
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
+        # to avoid undefined results
         loss1 = torch.log(1-input+1e-8)
         loss1 = loss1.clamp(min=-100)
         loss2 = torch.log(input+1e-8)
         loss2 = loss2.clamp(min=-100)
+        
         loss = -(self.p1*(1-label)*loss1+self.p2*label*loss2)
         
         return loss
