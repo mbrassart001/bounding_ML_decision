@@ -7,3 +7,4 @@ from .adult import AdultDataset
 from .bank_marketing import BankMarketingDataset
 from .contraceptive import ContraceptiveDataset
 from .compas import CompasDataset
+from .titanic import TitanicDataset
