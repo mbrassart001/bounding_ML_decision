@@ -7,5 +7,6 @@ tmp*
 *.pth
 *.csv
 *.npy
+*.png
 SPECT*
 msnbc*
