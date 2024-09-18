@@ -9,6 +9,7 @@ from typing import Optional, Callable, Mapping
 from torch import Tensor
 from collections import OrderedDict
 from numbers import Number      
+from custom_activations import StepActivation
 
 class Parallel(torch.nn.ModuleDict):
     def __init__(self, modules: Optional[Mapping[str, torch.nn.Module]]=None) -> None:
@@ -54,10 +55,7 @@ class MaxLayer(torch.nn.Module):
             raise ValueError(f"Supported methods are {', '.join(methods)}")
         self.backward_func = getattr(MaxFunction, "backward_blame_" + backward_method)
 
-    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
-        if not isinstance(inputs, Mapping):
-            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
-        
+    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:    
         input = torch.stack(list(inputs.values()))
 
         return MaxFunction.apply(input, self.backward_func)
@@ -102,10 +100,7 @@ class MaxHierarchicalLayer(torch.nn.Module):
         self.fp_mult = fp_multiplier
         self.cov_mult = cov_multiplier
 
-    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
-        if not isinstance(inputs, Mapping):
-            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
-        
+    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:      
         input = torch.stack(list(inputs.values()))
 
         return MaxHierarchicalFunction.apply(input, self.true_labels, self.fp_mult, self.cov_mult)
@@ -144,9 +139,94 @@ class MinLayer(torch.nn.Module):
         self.backward_func = getattr(MinFunction, "backward_blame_" + backward_method)
 
     def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
-        if not isinstance(inputs, Mapping):
-            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
-
         input = torch.stack(list(inputs.values()))
 
         return MinFunction.apply(input, self.backward_func)
+    
+class DecisionLayer(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, inputs: Mapping[str, Tensor]) -> Tensor:
+        if not isinstance(inputs, Mapping):
+            raise ValueError(f"Use mapping object as inputs instead of {type(inputs)}")
+        
+        high = inputs.get('high')
+        low = inputs.get('low')
+        big = inputs.get('big')
+
+        output = torch.where(high > 0.5, high, torch.where(low < 0.5, low, big))
+        return output
+
+class EncodingLayer(torch.nn.Module):
+    default_encoding_size = 2
+
+    def __init__(
+            self,
+            metadata: Mapping[str, tuple[int, int] | int],
+            output_sizes: Mapping[str, int],
+            default_encoding_size: int | None = None,
+        ) -> None:
+        super().__init__()
+
+        self.hot_encode = False
+        self.layer = torch.nn.ModuleList()
+        self.slices_indices = []
+        self.size_out = 0
+        default_encoding_size = default_encoding_size or EncodingLayer.default_encoding_size
+
+        for col, data in metadata.items():
+            if isinstance(data, tuple):
+                start, end = data
+                size_in = end - start + 1
+                size_out = output_sizes.get(col, default_encoding_size)
+
+                self.layer.append(
+                    torch.nn.Sequential(OrderedDict([
+                        ('enc_linear', torch.nn.Linear(size_in, size_out)), 
+                        ('enc_softmax', torch.nn.Softmax(dim=1)),
+                    ]))
+                )
+
+                self.slices_indices.append((start, end+1))
+                self.size_out+=size_out
+            else:
+                self.layer.append(torch.nn.Identity())
+
+                self.slices_indices.append((data, data+1))
+                self.size_out+=1
+
+        # building a list containing for each modules : module, start index, end index
+        self.module_iter = list(zip(self.layer, *zip(*self.slices_indices)))
+
+    def forward(self, input: torch.Tensor):
+        outputs = []
+        for module, start, end in self.module_iter:
+            input_slice = input[:, start:end]
+            result = module(input_slice)
+            if self.hot_encode and not isinstance(module, torch.nn.Identity):
+                max_indices = torch.argmax(result, dim=1)
+                one_hot_result = torch.zeros_like(result)
+                one_hot_result.scatter_(1, max_indices.unsqueeze(1), 1)
+                result = one_hot_result
+
+            outputs.append(result)
+
+        output = torch.cat(outputs, dim=1)
+        return output
+    
+    @staticmethod
+    def total_encoding_size(
+        metadata: Mapping[str, tuple[int, int]|int],
+        output_sizes: Mapping[str, int],
+        default_encoding_size: int | None = None,
+    ) -> int:
+        default_encoding_size = default_encoding_size or EncodingLayer.default_encoding_size
+
+        total_size = 0
+        for c, x in metadata.items():
+            if isinstance(x, tuple):
+                total_size += output_sizes.get(c, default_encoding_size)
+            else:
+                total_size += 1
+        return total_size
