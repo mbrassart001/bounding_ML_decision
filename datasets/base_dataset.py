@@ -7,7 +7,20 @@ from typing import Tuple, Union, Hashable, Mapping, Sequence
 
 pd.options.mode.copy_on_write = True
 
+DATASET_METADATA = {}
+
 class Dataset:
+    @classmethod
+    def get_metadata(cls) -> dict[str, Tuple[int,int]|int]:
+        metadata = DATASET_METADATA.get(cls)
+        if metadata is None:
+            raise ValueError(cls)
+        return metadata 
+    
+    @staticmethod
+    def get_encoding_sizes() -> dict[str, int]:
+        return NotImplemented
+
     @staticmethod
     def get_df_data() -> pd.DataFrame:
         return NotImplemented
@@ -86,7 +99,14 @@ class Dataset:
     @staticmethod
     def hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
         df_x = pd.get_dummies(df_x, columns=columns, drop_first=True)
-        return df_x
+        intervals = {}
+        for col in columns:
+            indices = [i for i, s in enumerate(df_x.columns) if s.startswith(col+'_')]
+            if indices[0] != indices[-1]:
+                intervals[col] = ((indices[0], indices[-1], ))
+            else:
+                intervals[col] = indices[0]
+        return df_x, intervals
     
     @staticmethod
     def numeric_hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
@@ -154,24 +174,36 @@ class Dataset:
         df_x, df_y = cls.data_label_separation(df, label_column)
         df_y = cls.label_to_numeric(df_y, label_column)
 
+        txt_columns = df_x.select_dtypes(exclude="number").columns
+        num_columns = df_x.select_dtypes(include="number").columns
+
         if discretizing:
             df_x = cls.discretize_numeric(df_x)
-            numeric_hot_encode_columns = df_x.select_dtypes(include="number").columns
+            numeric_hot_encode_columns = num_columns
         else:
             df_x = cls.normalize_numeric(df_x)
-            numeric_hot_encode_columns = []
+            numeric_hot_encode_columns = None
         
         if hot_encoding:
-            hot_encode_columns = df_x.select_dtypes(exclude="number").columns
-            df_x = cls.hot_encode(df_x, hot_encode_columns)
-            df_x = cls.numeric_hot_encode(df_x, numeric_hot_encode_columns)
+            hot_encode_columns = txt_columns
+            df_x, intervals = cls.hot_encode(df_x, hot_encode_columns)
+            if numeric_hot_encode_columns is not None:
+                df_x = cls.numeric_hot_encode(df_x, numeric_hot_encode_columns) # TODO intervals
+            else:
+                nunique = df_x[num_columns].nunique(axis=0)
+                for i, (col, n) in enumerate(nunique.items()):
+                    if n > 2:
+                        intervals[col] = ((i,i))
+                    else:
+                        intervals[col] = i
 
         if balancing:
             df_x, df_y = cls.balance_dataset(df_x, df_y, label_column)
         
         x = df_x.to_numpy()
         y = df_y.to_numpy()
-        
+        DATASET_METADATA[cls] = intervals
+
         return x, y
 
     @classmethod
@@ -184,7 +216,6 @@ class Dataset:
         rmv_pct: Union[float|bool] = False,
         keep_label: Union[int|Sequence[str]] = 2,
     ) -> Tuple[ndarray, ndarray]:
-
         return Dataset._get_dataset(
             cls=cls,
             balancing=balancing,
@@ -194,7 +225,7 @@ class Dataset:
             rmv_pct=rmv_pct,
             keep_label=keep_label,
         )
-    
+
 class ImageDataset(Dataset):
     @classmethod
     def get_dataset(
