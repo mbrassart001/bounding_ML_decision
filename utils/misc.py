@@ -1,13 +1,13 @@
 import os
 import sys
+import time
 
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import ipywidgets as widgets
 from sklearn import metrics, model_selection
-from copy import copy
-
+from contextlib import contextmanager
 from typing import Sequence, Generator, Optional, Callable, Dict, Any
 
 import torch.utils
@@ -465,3 +465,31 @@ class Figures(widgets.HBox):
             self.visible_legend(True)
             self.toggle_buttons.options = self.l + ['all']
             self.toggle_buttons.value = 'all'
+
+class Timer:
+    def __init__(self):
+        self.times = {}
+
+    @contextmanager
+    def time(self, label):
+        start = time.process_time()
+        yield
+        end = time.process_time()
+        elapsed = end - start
+        if label not in self.times:
+            self.times[label] = []
+        self.times[label].append(elapsed)
+
+    def get_total_time(self, label):
+        return sum(self.times.get(label, []))
+
+    def get_average_time(self, label):
+        total_time = self.get_total_time(label)
+        count = len(self.times.get(label, []))
+        return total_time / count if count > 0 else 0
+
+    def print_times(self):
+        for label, times in self.times.items():
+            total_time = sum(times)
+            average_time = total_time / len(times)
+            print(f"Process Time for {label}: {total_time:.6f} seconds ({len(times)} * {average_time:.6f})")
