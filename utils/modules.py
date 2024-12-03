@@ -158,6 +158,10 @@ class DecisionLayer(torch.nn.Module):
         output = torch.where(high > 0.5, high, torch.where(low < 0.5, low, big))
         return output
 
+class ZeroOutput(torch.nn.Module):
+    def forward(self, x):
+        return torch.empty((x.size(0), 0))
+
 class EncodingLayer(torch.nn.Module):
     default_encoding_size = 2
 
@@ -174,27 +178,37 @@ class EncodingLayer(torch.nn.Module):
         self.slices_indices = []
         self.size_out = 0
         default_encoding_size = default_encoding_size or EncodingLayer.default_encoding_size
-
-        for col, data in metadata.items():
+        
+        for col, data in metadata.items():  
             if isinstance(data, tuple):
                 start, end = data
                 size_in = end - start + 1
                 size_out = output_sizes.get(col, default_encoding_size)
+                size_out = size_out if size_out > 0 else 0
 
-                self.layer.append(
-                    torch.nn.Sequential(OrderedDict([
-                        ('enc_linear', torch.nn.Linear(size_in, size_out)), 
-                        ('enc_softmax', torch.nn.Softmax(dim=1)),
-                    ]))
-                )
+                if size_out > 0:
+                    self.layer.append(
+                        torch.nn.Sequential(OrderedDict([
+                            ('enc_linear', torch.nn.Linear(size_in, size_out)), 
+                            ('enc_softmax', torch.nn.Softmax(dim=1)),
+                        ]))
+                    )
+                else:
+                    self.layer.append(ZeroOutput())
 
                 self.slices_indices.append((start, end+1))
                 self.size_out+=size_out
             else:
-                self.layer.append(torch.nn.Identity())
+                size_out = output_sizes.get(col, 1)
+                size_out = size_out if size_out > 0 else 0
+
+                if size_out > 0:
+                    self.layer.append(torch.nn.Identity())
+                else:
+                    self.layer.append(ZeroOutput())  
 
                 self.slices_indices.append((data, data+1))
-                self.size_out+=1
+                self.size_out+=size_out
 
         # building a list containing for each modules : module, start index, end index
         self.module_iter = list(zip(self.layer, *zip(*self.slices_indices)))
@@ -212,7 +226,11 @@ class EncodingLayer(torch.nn.Module):
 
             outputs.append(result)
 
-        output = torch.cat(outputs, dim=1)
+        try:
+            output = torch.cat(outputs, dim=1)
+        except RuntimeError:
+            print(input, outputs, self.module_iter, self.layer, self.slices_indices)
+            raise Exception()
         return output
     
     @staticmethod
@@ -226,7 +244,9 @@ class EncodingLayer(torch.nn.Module):
         total_size = 0
         for c, x in metadata.items():
             if isinstance(x, tuple):
-                total_size += output_sizes.get(c, default_encoding_size)
+                added_size = output_sizes.get(c, default_encoding_size)
             else:
-                total_size += 1
+                added_size = output_sizes.get(c, 1)
+            total_size += added_size
+            output_sizes[c] = added_size
         return total_size
