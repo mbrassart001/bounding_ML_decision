@@ -1,0 +1,44 @@
+---
+seed:   2872
+dataset:
+    name: Synthetic
+    args:
+        n_samples:      1000
+        n_features:     6
+        n_informative:  4
+        n_redundant:    0
+        n_classes:      2
+        class_sep:      0.5
+robdd:
+    remove: "1"
+encoding:
+    sizes:  {}
+    default_encoding_size:  3
+model:
+    up:
+        hidden_layers:  [10,5]
+    down:
+        hidden_layers:  [10,5]
+    big:
+        hidden_layers:  [50,50,25]
+training:
+    up:
+        criterion:  
+            name:   AsymBCELoss
+            args:   
+                p:  1.2
+    down:
+        criterion:  
+            name:   AsymBCELoss
+            args:   1.2
+    big:
+        criterion:  
+            name:   BCELoss
+    default:
+        epochs: 500
+        optimizer:  
+            name:   Adam
+            args:
+                lr:     0.01
+                weight_decay:   0.000001
+...
