@@ -11,10 +11,33 @@ DATASET_METADATA = {}
 
 class Dataset:
     @classmethod
-    def get_metadata(cls) -> dict[str, Tuple[int,int]|int]:
+    def set_metadata(cls, metadata):
+        DATASET_METADATA[cls] = metadata
+
+    @staticmethod
+    def default_metadata(columns):
+        metadata = {str(col): (i, i) for i, col in enumerate(columns)}
+        return metadata
+
+    @classmethod
+    def get_metadata(cls, rmv_features: list[str|int]) -> dict[str, Tuple[int,int]|int]:
         metadata = DATASET_METADATA.get(cls)
         if metadata is None:
-            raise ValueError(cls)
+            raise ValueError()
+
+        if rmv_features is not None:
+            rmv_size = 0
+            for k, v in metadata.items():
+                if k in rmv_features:
+                    if isinstance(v, tuple):
+                        rmv_size += v[1]-v[0]+1
+                    else:
+                        rmv_size += v
+                else:
+                    if isinstance(v, tuple):
+                        metadata[k] = (v[0]-rmv_size, v[1]-rmv_size)
+                    else:
+                        metadata[k] = v-rmv_size
         return metadata 
     
     @staticmethod
@@ -109,6 +132,12 @@ class Dataset:
         return df_x, intervals
     
     @staticmethod
+    def encode_non_numeric(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
+        for col in columns:
+            df_x[col], _ = pd.factorize(df_x[col])
+        return df_x
+    
+    @staticmethod
     def numeric_hot_encode(df_x: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
         df_exclude = df_x.drop(columns=columns)
 
@@ -159,6 +188,7 @@ class Dataset:
         na_handling: str = "drop", 
         rmv_pct: Union[float|bool] = False,
         keep_label: Union[int|Sequence[str]] = 2,
+        rmv_features: list[str] = [],
     ) -> Tuple[ndarray, ndarray]:
 
         label_column = cls.get_label_column()
@@ -196,13 +226,19 @@ class Dataset:
                         intervals[col] = ((i,i))
                     else:
                         intervals[col] = i
+        else:
+            df_x = cls.encode_non_numeric(df_x, txt_columns)
+            intervals = cls.default_metadata(df_x.columns)
 
         if balancing:
             df_x, df_y = cls.balance_dataset(df_x, df_y, label_column)
-        
+
+        df_x = df_x.drop(columns=rmv_features)
+
         x = df_x.to_numpy()
         y = df_y.to_numpy()
-        DATASET_METADATA[cls] = intervals
+        
+        cls.set_metadata(intervals)
 
         return x, y
 
@@ -215,6 +251,7 @@ class Dataset:
         na_handling: str = "drop", 
         rmv_pct: Union[float|bool] = False,
         keep_label: Union[int|Sequence[str]] = 2,
+        remove: list[str] = [],
     ) -> Tuple[ndarray, ndarray]:
         return Dataset._get_dataset(
             cls=cls,
@@ -224,6 +261,7 @@ class Dataset:
             na_handling=na_handling,
             rmv_pct=rmv_pct,
             keep_label=keep_label,
+            rmv_features=remove
         )
 
 class ImageDataset(Dataset):
