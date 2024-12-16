@@ -1,7 +1,6 @@
 compiling_nn/odd
 backup/
 outdated*
-datasets/spect/DonorNote.txt
 tmp*
 *.zip
 *.pyc
@@ -9,5 +8,6 @@ tmp*
 *.csv
 *.npy
 *.png
-SPECT*
-msnbc*
+datasets/spect/
+datasets/msnbc/
+notes.*
