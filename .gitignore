@@ -1,4 +1,5 @@
 compiling_nn/odd
+compiling_nn/*.ipynb
 backup/
 outdated*
 tmp*
