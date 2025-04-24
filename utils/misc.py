@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 
 import torch
@@ -13,9 +12,7 @@ from typing import Sequence, Generator, Optional, Callable, Dict, Any
 import torch.utils
 import torch.utils.data
 
-sys.path.append(os.path.dirname(__file__))
-
-import more_torch_functions as mtf
+import utils.more_torch_functions as mtf
 from torch.utils.data import DataLoader, TensorDataset
 
 FILE_DIR = os.path.dirname(__file__)

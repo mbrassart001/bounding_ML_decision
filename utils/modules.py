@@ -1,15 +1,10 @@
-import os
-import sys
-sys.path.append(os.path.dirname(__file__))
-
 import torch
-import more_torch_functions as mtf
+import utils.more_torch_functions as mtf
 
 from typing import Optional, Callable, Mapping
 from torch import Tensor
 from collections import OrderedDict
 from numbers import Number      
-from custom_activations import StepActivation
 
 class Parallel(torch.nn.ModuleDict):
     def __init__(self, modules: Optional[Mapping[str, torch.nn.Module]]=None) -> None:

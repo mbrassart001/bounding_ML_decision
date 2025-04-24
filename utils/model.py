@@ -1,15 +1,10 @@
-import os
-import sys
-
-sys.path.append(os.path.dirname(__file__))
-
 import torch
 import torch.nn as nn
 import numpy as np
 
 from collections import OrderedDict
-from modules import Parallel, MaxLayer, MinLayer, EncodingLayer
-from custom_activations import StepActivation, hard_softmax
+from utils.modules import Parallel, MaxLayer, MinLayer, EncodingLayer
+from utils.custom_activations import StepActivation, hard_softmax
 
 from typing import Optional
 
@@ -62,7 +57,7 @@ class RobddModel(nn.Module):
 
         self.robdd = robdd
         self.inputs_with_number = [(input, int(input.name[1:])) for input in robdd.inputs]
-        self.func = lambda x: int(robdd.restrict({input: x[number] for input, number in self.inputs_with_number}))
+        self.func = lambda x: int(self.robdd.restrict({input: x[number] for input, number in self.inputs_with_number}))
         self.enc = encoding_layer
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -72,6 +67,10 @@ class RobddModel(nn.Module):
         x = torch.tensor(x).unsqueeze(1)
 
         return x
+    
+    def compose(self, mapping) -> None:
+        self.robdd = self.robdd.compose(mapping)
+        self.func = lambda x: int(self.robdd.restrict({input: x[number] for input, number in self.inputs_with_number}))       
 
 class MultiApprox(nn.Module):
     def __init__(self, aggregation: str, backward_method: str = "all") -> None:
@@ -101,16 +100,36 @@ class MultiApprox(nn.Module):
 
     def named_apx(self):
         return self.net.apx_modules.named_children()
-    
+
+class MultiRobddModel(nn.Module):
+    def __init__(self, robdd_dict, logic_layer) -> None:
+        super().__init__()
+
+        self.net = nn.Sequential(OrderedDict([
+            ('robdd_modules', Parallel(robdd_dict)),
+            ('logic', logic_layer),
+        ]))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.net(x)
+        return x
+
+    def compose(self, mapping) -> None:
+        for _, robdd in self.named_robdd():
+            robdd.compose(mapping)
+
+    def named_robdd(self):
+        return self.net.robdd_modules.named_children()
+
 class GlobalModel(nn.Module):
     def __init__(self, up: nn.Module, down: nn.Module, big: nn.Module) -> None:
         super().__init__()
 
         self.net = nn.Sequential(OrderedDict([
             ('models', Parallel(OrderedDict([
-                ('up',  up),
-                ('down',down),
-                ('big', big),
+                ('up',   up),
+                ('down', down),
+                ('big',  big),
             ]))),  
         ]))
 
@@ -121,15 +140,15 @@ class GlobalModel(nn.Module):
 
         return torch.where(up > 0.5, up, torch.where(down < 0.5, down, net))
     
-    def forward_up_only(self, x) -> torch.Tensor:
+    def forward_up_only(self, x: torch.Tensor) -> torch.Tensor:
         x = self.net.models.up(x)
         return x
     
-    def forward_down_only(self, x) -> torch.Tensor:
+    def forward_down_only(self, x: torch.Tensor) -> torch.Tensor:
         x = self.net.models.down(x)
         return x
     
-    def forward_big_only(self, x) -> torch.Tensor:
+    def forward_big_only(self, x: torch.Tensor) -> torch.Tensor:
         x = self.net.models.big(x)
         return x
     
