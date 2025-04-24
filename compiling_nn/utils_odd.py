@@ -1,28 +1,42 @@
 import time
 import signal
+import threading
+import functools
 import pickle
 from pyeda.boolalg.bdd import BDDVariable, BDDNODEZERO, BDDNODEONE, bddvar, expr2bdd
 
-def handler(sig, frame):
-    raise Exception("Function takes too much time")
+class TimeoutException(Exception):
+    pass
 
-def timelimit(maxtime=100):
-    def inner(func):
+def _timeout_handler(signum, frame):
+    raise TimeoutException("Function took too long!")
+
+def timelimit(seconds=100):
+    def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            signal.signal(signal.SIGALRM, handler)
-            signal.alarm(maxtime)
+            signal.signal(signal.SIGINT, _timeout_handler)
+
+            def watchdog():
+                time.sleep(seconds)
+                signal.raise_signal(signal.SIGINT)
+
+            t = threading.Thread(target=watchdog)
+            t.daemon = True
+            t.start()
+
             try:
-                res = func(*args, **kwargs)
-            except Exception as exc:
-                print(exc)
-            else:
-                signal.alarm(-1)
-                return res
+                return func(*args, **kwargs)
+            except TimeoutException as e:
+                raise e
+            finally:
+                signal.signal(signal.SIGINT, signal.default_int_handler)
         return wrapper
-    return inner
+    return decorator
 
 def timecounter(message=None):
-    def inner(func):
+    def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             start = time.time()
             res = func(*args, **kwargs)
@@ -38,7 +52,7 @@ def timecounter(message=None):
                 print(f"Done in {deltatime}ms")
             return res
         return wrapper
-    return inner
+    return decorator
 
 class BDDPickler(pickle.Pickler):
     def persistent_id(self, obj):
