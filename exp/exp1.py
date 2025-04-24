@@ -210,7 +210,7 @@ def main(filename):
 
     model = parse_model(get_exp_param("model"), data_size, encoded_data_size, kwargs_enc)
 
-    print("Training model started ...", end="\t", flush=True)
+    print("Model training started ...", end="\t", flush=True)
     train(model, get_exp_param("training"), x_train, y_train, x_valid, y_valid)
     print("Training completed")
 
