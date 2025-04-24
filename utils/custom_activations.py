@@ -47,26 +47,3 @@ class HardSoftmax(torch.nn.Module):
 
     def forward(self, input: Tensor) -> Tensor:
         return hard_softmax(input, self.eps)
-    
-
-class HistLayer(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.uk = torch.nn.Parameter()# size ? init ?
-        self.wk = torch.nn.Parameter()# size ? init ?
-
-        # Conv1d(weights = 1, bias = -uk)
-        # Absolute Value
-        # Conv1d (weights = -1, bias = wk)
-        # Exp
-        # Threshold (relu at 1?)
-        # ??? Global Average Pooling ???
-    
-    def forward(self, input):
-        input = torch.nn.functional.conv1d(input, torch.ones_like(input), -self.uk)
-        input = torch.abs(input)
-        input = torch.nn.functional.conv1d(input, -torch.ones_like(input), self.wk)
-        input = torch.exp(input)
-        input = torch.relu(input - 1) + 1 # x if x > 1 else 1
-
-        return input
