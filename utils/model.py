@@ -68,9 +68,20 @@ class RobddModel(nn.Module):
 
         return x
     
+    def _update_func(self):
+        self.func = lambda x: int(self.robdd.restrict({input: x[number] for input, number in self.inputs_with_number}))
+
     def compose(self, mapping) -> None:
         self.robdd = self.robdd.compose(mapping)
-        self.func = lambda x: int(self.robdd.restrict({input: x[number] for input, number in self.inputs_with_number}))       
+        self._update_func()
+
+    def smoothing(self, inputs) -> None:
+        self.robdd = self.robdd.smoothing(inputs)
+        self._update_func()
+
+    def consensus(self, inputs) -> None:
+        self.robdd = self.robdd.consensus(inputs)
+        self._update_func()
 
 class MultiApprox(nn.Module):
     def __init__(self, aggregation: str, backward_method: str = "all") -> None:
@@ -117,6 +128,14 @@ class MultiRobddModel(nn.Module):
     def compose(self, mapping) -> None:
         for _, robdd in self.named_robdd():
             robdd.compose(mapping)
+
+    def smoothing(self, inputs) -> None:
+        for _, robdd in self.named_robdd():
+            robdd.smoothing(inputs)
+
+    def consensus(self, inputs) -> None:
+        for _, robdd in self.named_robdd():
+            robdd.consensus(inputs)
 
     def named_robdd(self):
         return self.net.robdd_modules.named_children()
