@@ -1,7 +1,7 @@
 import torch
 from sklearn import metrics
-from pyeda.inter import bddvar
-from parse import parse_criterion, parse_optimizer
+from pyeda.boolalg.bdd import bddvar
+from exp.parse import parse_criterion, parse_optimizer
 from utils.misc import train_model
 from utils.model import MultiApprox, ApproxModel, RobddModel, MultiRobddModel
 from compiling_nn.build_odd import compile_nn
