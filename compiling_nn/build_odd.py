@@ -19,9 +19,10 @@ class ODD():
     def __str__(self):
         return str(boolalg.bdd.bdd2expr(self.root.eda_expr))
 
-    def display_expr(self):
-        if self.bdd is not None:
-            dot_odd = self.bdd.to_dot()
+    @staticmethod
+    def display_expr(bdd):
+        if bdd is not None:
+            dot_odd = bdd.to_dot()
             display(Source(dot_odd))
 
     def display_graph(self):
@@ -96,7 +97,7 @@ class ODD():
         self.root = self._build_odd_rec(weights, threshold)
         self.bdd = self.root.eda_expr
 
-    @timelimit(600)
+    @timelimit(6000)
     def _build_odd_rec(self, weights, threshold):
         n = len(weights)
         zero_sink = Node(Interval(-infty, threshold, closed_left=False, closed_right=False))
