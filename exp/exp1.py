@@ -16,7 +16,7 @@ from pyeda.boolalg.bdd import _bdd, BDDNODEZERO, BDDNODEONE
 import datasets
 from utils.modules import EncodingLayer
 from utils.model import GlobalModel
-from parse import parse_model, parse_rmv_features
+from exp.parse import parse_model, parse_rmv_features
 from net_utils import train, matching_inputs, approx2robdd, compute_metrics
 
 SAVE_PATH = os.path.join(os.path.abspath('..'), "backup")
@@ -95,7 +95,6 @@ def main(filename):
     robdd_desc = get_exp_param("robdd", default=None) 
     if robdd_desc is not None:
         remove_inputs = get_robdd_rmv(robdd_desc, metadata, encoding_sizes)
-        #TODO union/inter
         compose_zero = {k: _bdd(BDDNODEZERO) for k in remove_inputs}
         compose_one = {k: _bdd(BDDNODEONE) for k in remove_inputs}
         
@@ -108,7 +107,7 @@ def main(filename):
             robdd = approx2robdd(module)
             print(f"{label.capitalize()} converted")
 
-            # retirer colonnes dans robdd
+            # retirer variables dans robdd
             if label == "up":
                 robdd.compose(compose_zero)
             elif label == "down":
