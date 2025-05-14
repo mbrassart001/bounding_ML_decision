@@ -2,7 +2,7 @@ import torch
 from utils.custom_loss import AsymBCELoss
 from utils.model import ApproxModel, MultiApprox, BaseModel, GlobalModel
 
-def parse_approx(model_desc, encoded_data_size, kwargs_enc, agg_method="max", backward_method="all"):
+def parse_approx(model_desc: dict, encoded_data_size: int, kwargs_enc: dict, agg_method: str="max", backward_method: str="all") -> ApproxModel|MultiApprox:
     if model_desc is None:
         return None
     if not isinstance(model_desc, list):
@@ -26,11 +26,11 @@ def parse_approx(model_desc, encoded_data_size, kwargs_enc, agg_method="max", ba
             model.add_apx(module)
     return model
 
-def parse_net(model_desc, data_size):
+def parse_net(model_desc: dict, data_size: int) -> BaseModel:
     model = BaseModel(data_size, *model_desc.get("hidden_layers", list()))
     return model
 
-def parse_model(model_desc, data_size, encoded_data_size, kwargs_enc):
+def parse_model(model_desc: dict, data_size: int, encoded_data_size: int, kwargs_enc: dict) -> BaseModel|GlobalModel:
     up_model = parse_approx(model_desc.get("up"), encoded_data_size, kwargs_enc, agg_method="max")
     down_model = parse_approx(model_desc.get("down"), encoded_data_size, kwargs_enc, agg_method="min")
     big_model = parse_net(model_desc.get("big"), data_size)
@@ -40,7 +40,7 @@ def parse_model(model_desc, data_size, encoded_data_size, kwargs_enc):
     model = GlobalModel(up=up_model, down=down_model, big=big_model)
     return model
 
-def parse_criterion(crit_desc):
+def parse_criterion(crit_desc: dict[str, str|dict]) -> torch.nn.modules.loss._Loss:
     if crit_desc is None:
         raise AttributeError("criterion needs to be provided")
 
@@ -56,7 +56,7 @@ def parse_criterion(crit_desc):
     else:
         return criterion()
 
-def parse_optimizer(opti_desc, model):
+def parse_optimizer(opti_desc: dict[str, str|dict], model: torch.nn.Module) -> torch.optim.Optimizer:
     if opti_desc is None:
         raise AttributeError("optimizer needs to be provided")
 
@@ -69,7 +69,7 @@ def parse_optimizer(opti_desc, model):
     else:
         return optimizer(model.parameters())
 
-def parse_rmv_features(rmv_features):
+def parse_rmv_features(rmv_features: None|str|int|list[int|str]) -> list[str]:
     if rmv_features is None:
         return []
     elif isinstance(rmv_features, list):

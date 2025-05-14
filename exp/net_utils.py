@@ -1,12 +1,12 @@
 import torch
 from sklearn import metrics
-from pyeda.boolalg.bdd import bddvar
+from pyeda.boolalg.bdd import bddvar, BDDVariable
 from exp.parse import parse_criterion, parse_optimizer
 from utils.misc import train_model
 from utils.model import MultiApprox, ApproxModel, RobddModel, MultiRobddModel
 from compiling_nn.build_odd import compile_nn
 
-def train(model, train_desc, x_train, y_train, x_valid, y_valid):
+def train(model: torch.nn.Module, train_desc: dict, x_train: torch.Tensor, y_train: torch.Tensor, x_valid: torch.Tensor, y_valid: torch.Tensor) -> None:
     default_desc = train_desc.get("default", None)
     if default_desc is not None:
         default_criterion = default_desc.get("criterion")
@@ -28,7 +28,7 @@ def train(model, train_desc, x_train, y_train, x_valid, y_valid):
 
         train_model(x_train, y_train, module, criterion, optimizer, epochs, x_valid, y_valid)
 
-def compute_metrics(model: torch.nn.Module, x_valid, y_valid):
+def compute_metrics(model: torch.nn.Module, x_valid: torch.Tensor, y_valid: torch.Tensor) -> dict[str, float]:
     model.eval()
     scores = {}
 
@@ -58,7 +58,7 @@ def approx2robdd(module: ApproxModel|MultiApprox) -> RobddModel|MultiRobddModel:
         raise TypeError()
     return robdd
 
-def matching_inputs(metadata: dict[int|str, int|tuple[int,int]], encoding_sizes: dict[int|str, int]):
+def match_inputs(metadata: dict[int|str, int|tuple[int,int]], encoding_sizes: dict[int|str, int]) -> dict[str, list[BDDVariable]]:
     inputs = {}
     current_size = 0
     for k in metadata.keys():
@@ -66,3 +66,4 @@ def matching_inputs(metadata: dict[int|str, int|tuple[int,int]], encoding_sizes:
         inputs.update({str(k): [bddvar(f"i{i}") for i in range(current_size, current_size + encoding_size)]})
         current_size+=(encoding_size)
     return inputs
+   
