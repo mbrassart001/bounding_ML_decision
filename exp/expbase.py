@@ -24,6 +24,9 @@ class ExpDataGetter:
         with open(filename, 'r') as f: 
             self.EXP_DESC = yaml.load(f, Loader)
 
+    def get_seed(self, default_seed: int=0) -> int:
+        return self.get_exp_param("seed", default=default_seed)
+
     def get_exp_param(self, *path: str, default: Any=None) -> Any:
         param = self.EXP_DESC
         for name in path:
@@ -56,12 +59,35 @@ class ExpDataGetter:
             raise Exception
         return remove_inputs
 
+class IterDataGetter(ExpDataGetter):
+    def __init__(self, filename, seed_list: list[int]=None) -> None:
+        super().__init__(filename)
+        self._seed_iter = iter(seed_list) if seed_list is not None else None
+        self._seed = None
+
+    def get_seed(self, default_seed: int=0) -> int:
+        return self._seed if self._seed is not None else default_seed
+
+    def __iter__(self) -> None:
+        if self._seed_iter is None:
+            seeds = super().get_seed()
+            if isinstance(seeds, int):
+                seeds = [seeds]
+            self._seed_iter = iter(seeds)
+        return self
+
+    def __next__(self) -> None:
+        if self._seed_iter is None:
+            raise StopIteration
+        self._seed = next(self._seed_iter)
+        return self
+
 class ExpBase:
-    def __init__(self, filename: str) -> None:
-        self.exp = ExpDataGetter(filename)
+    def __init__(self, datagtr: ExpDataGetter) -> None:
+        self.exp = datagtr
 
     def seed_all(self, default_seed: int=0) -> None:
-        seed = self.exp.get_exp_param("seed", default=default_seed)
+        seed = self.exp.get_seed(default_seed)
         torch.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)

@@ -1,7 +1,8 @@
 import sys, inspect
 
 from pyeda.boolalg.bdd import _bdd, BDDNODEZERO, BDDNODEONE
-from exp.expbase import ExpBase
+from exp.expbase import ExpBase, ExpDataGetter, IterDataGetter
+import pandas as pd
 
 class Exp1(ExpBase):
     def robdd_remove_methods(self, remove_inputs):
@@ -20,5 +21,15 @@ def main(expname, filename):
     expclass = classes.get(expname.capitalize(), None)
     if expclass is None:
         raise ValueError(f"{expname.capitalize()} is not a valid experience name")
-    exp = expclass(filename)
-    return exp.main(verbose=True)
+    
+    iterexpgtr = IterDataGetter(filename, [8746,86741,3684,786,69347,235,1785,52,5468,145])
+    results_list = []
+    for expgtr in iterexpgtr:
+        exp = expclass(expgtr)
+        res = exp.main(verbose=True)
+        results_list.append(res)
+        print(res)
+    
+    df = pd.DataFrame.from_dict(results_list)
+    print(df)
+    print(df.quantile())
