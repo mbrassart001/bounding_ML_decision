@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from pyeda.boolalg.bdd import _bdd, BDDNODEZERO
+from functools import reduce
 from collections import OrderedDict
 from utils.modules import Parallel, MaxLayer, MinLayer, EncodingLayer
 from utils.custom_activations import StepActivation, hard_softmax
@@ -124,21 +126,34 @@ class MultiRobddModel(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.net(x)
         return x
+    
+    def get_robdd_explain(self, x: torch.Tensor, value: int) -> np.ndarray:
+        x = self.net.robdd_modules(x)
+        modules = OrderedDict(self.named_robdd())
+
+        explanations = reduce(
+            lambda x,y: x+y,
+            (np.where(tensor.numpy() == value, modules[name], _bdd(BDDNODEZERO)) for name, tensor in x.items())
+        ) 
+        return explanations
 
     def compose(self, mapping) -> None:
-        for _, robdd in self.named_robdd():
+        for _, robdd in self.named_robdd_modules():
             robdd.compose(mapping)
 
     def smoothing(self, inputs) -> None:
-        for _, robdd in self.named_robdd():
+        for _, robdd in self.named_robdd_modules():
             robdd.smoothing(inputs)
 
     def consensus(self, inputs) -> None:
-        for _, robdd in self.named_robdd():
+        for _, robdd in self.named_robdd_modules():
             robdd.consensus(inputs)
 
-    def named_robdd(self):
+    def named_robdd_modules(self):
         return self.net.robdd_modules.named_children()
+
+    def named_robdd(self):
+        return ((name, module.robdd) for name, module in self.named_robdd_modules())
 
 class GlobalModel(nn.Module):
     def __init__(self, up: nn.Module, down: nn.Module, big: nn.Module) -> None:
