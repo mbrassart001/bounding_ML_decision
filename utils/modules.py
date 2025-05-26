@@ -10,7 +10,7 @@ class Parallel(torch.nn.ModuleDict):
     def __init__(self, modules: Optional[Mapping[str, torch.nn.Module]]=None) -> None:
         super().__init__(modules=modules)
 
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, input: Tensor) -> OrderedDict[str, Tensor]:
         d = OrderedDict()
         for name, module in self.items():
             d[name] = module(input)
