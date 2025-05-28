@@ -132,7 +132,7 @@ class MultiRobddModel(nn.Module):
         modules = OrderedDict(self.named_robdd())
 
         explanations = reduce(
-            lambda x,y: x+y,
+            lambda x,y: x|y,
             (np.where(tensor.numpy() == value, modules[name], _bdd(BDDNODEZERO)) for name, tensor in x.items())
         ) 
         return explanations
